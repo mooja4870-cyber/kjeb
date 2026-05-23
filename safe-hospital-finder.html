@@ -529,6 +529,7 @@ let ss="dental", cf="all", cv="list", hs=[], eid=null, hid=null;
 let uLat=37.6376, uLng=126.832, lN="고양시", lF="고양시";
 let mp=null, mks=[], um=null, mkm={}, sa=false;
 let s1=null, s2v=null, s3v=null;
+let sGradeThreshold = 15;
 
 function strip(s) { return (s||"").replace(/<[^>]*>/g,""); }
 function esc(s) { return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
@@ -553,14 +554,14 @@ function az(title, desc, cat, addr = "") {
   let st, sc;
   
   // 1단계: 기본 점수(Baseline) 및 등급 산정 (키워드 매칭이 없을 때)
-  if (hashVal < 15) {
-    // 15% 비율: S등급 (안심 추천)
+  if (hashVal < sGradeThreshold) {
+    // S등급 (안심 추천)
     st = "trusted";
     sc = 90 + (hashVal % 9); // 90 ~ 98점
   } else if (hashVal < 80) {
-    // 65% 비율: A등급 (부정 없음)
+    // A등급 (부정 없음)
     st = "clean";
-    sc = 75 + ((hashVal - 15) % 10); // 75 ~ 84점
+    sc = 75 + ((hashVal - sGradeThreshold) % 10); // 75 ~ 84점
   } else if (hashVal < 95) {
     // 15% 비율: B등급 (일부 언급)
     st = "caution";
@@ -800,6 +801,7 @@ function rl() {
 
 // ── 검색 ─────────────────────────────────────────────────────────
 async function doSearch() {
+  sGradeThreshold = 10 + Math.floor(Math.random() * 11); // 10% ~ 20% 랜덤 임계값 설정
   const btn = document.getElementById("srb");
   btn.disabled = true; btn.textContent = "🔍 검색 중...";
   document.getElementById("is").style.display = "none";
