@@ -393,6 +393,14 @@ tailwind.config = {
       <button onclick="clm()" style="background:none;border:none;font-size:22px;color:#7e7577;cursor:pointer;line-height:1;">✕</button>
     </div>
     <div class="modal-body">
+      <!-- 읍/면/동/리 직접 입력 검색 추가 -->
+      <div style="margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #efeded;">
+        <p style="font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;font-weight:600;color:#4d4547;margin-bottom:8px;">🔍 동네 직접 검색 (읍/면/동/리/지명)</p>
+        <div style="display:flex;gap:6px;">
+          <input type="text" id="cli" placeholder="예: 설악면 신천리, 화정동" style="flex:1;padding:10px 12px;border:1.5px solid #d0c3c6;border-radius:12px;font-size:12.5px;font-family:'Plus Jakarta Sans',sans-serif;outline:none;" onkeypress="if(event.key==='Enter') applyCustomLocation()">
+          <button id="clb_btn" onclick="applyCustomLocation()" style="padding:10px 16px;border-radius:12px;background:#665c5e;color:#fff;border:none;font-size:12.5px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;">검색</button>
+        </div>
+      </div>
       <div id="lbc" style="display:flex;align-items:center;gap:4px;padding:8px 0 14px;font-size:12px;color:#7e7577;flex-wrap:wrap;font-family:'Plus Jakarta Sans',sans-serif;">전체</div>
       <div style="margin-bottom:14px;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:12px;font-weight:600;color:#4d4547;font-family:'Plus Jakarta Sans',sans-serif;">
@@ -882,6 +890,50 @@ function openLM() {
   ubc();
 }
 function clm() { document.getElementById("lm").classList.remove("open"); }
+
+async function applyCustomLocation() {
+  const q = document.getElementById("cli").value.trim();
+  if (!q) return;
+  
+  const btn = document.getElementById("clb_btn");
+  const originalText = btn.textContent;
+  btn.textContent = "⌛";
+  btn.disabled = true;
+  
+  try {
+    const items = await napi(q, 1);
+    if (items && items.length > 0) {
+      const it = items[0];
+      uLat = parseFloat(it.mapy)/1e7;
+      uLng = parseFloat(it.mapx)/1e7;
+      
+      // 검색된 지명이 있으면 그것을 사용
+      lN = it.title.replace(/<[^>]*>/g, "").trim();
+      lF = q;
+      
+      document.getElementById("ln").textContent = lN;
+      clm();
+      usb();
+    } else {
+      // API 결과가 없는 경우 그냥 입력 지명 그대로 검색 쿼리로 사용
+      lN = q;
+      lF = q;
+      document.getElementById("ln").textContent = lN;
+      clm();
+      usb();
+    }
+  } catch(e) {
+    console.error(e);
+    lN = q;
+    lF = q;
+    document.getElementById("ln").textContent = lN;
+    clm();
+    usb();
+  } finally {
+    btn.textContent = originalText;
+    btn.disabled = false;
+  }
+}
 
 function ubc() {
   let h = "전체";
