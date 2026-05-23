@@ -426,7 +426,7 @@ tailwind.config = {
 
 <!-- ══ SCRIPT ══ -->
 <script>
-const API = "http://localhost:3333";
+const API = window.location.origin.startsWith("http") ? window.location.origin : "http://localhost:3000";
 
 async function napi(q, n=5) {
   try {
