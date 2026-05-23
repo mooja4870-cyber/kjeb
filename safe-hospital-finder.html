@@ -589,6 +589,19 @@ function az(title, desc, cat, addr = "") {
       st = "trusted";
     }
   }
+
+  // 3단계: 등급과 점수 대역 간의 불일치 방지 보정 (동적 등급과 상태 일치)
+  if (st === "trusted") {
+    if (sc < 90) sc = 90 + (hashVal % 9);
+  } else if (st === "clean") {
+    if (sc < 70) sc = 75 + ((hashVal - sGradeThreshold) % 10);
+    if (sc >= 85) sc = 84;
+  } else if (st === "caution") {
+    if (sc < 50) sc = 55 + ((hashVal - 80) % 15);
+    if (sc >= 70) sc = 69;
+  } else if (st === "warning") {
+    if (sc >= 50) sc = 45;
+  }
   
   // ── 병원 등급 계산 (S/A/B/D) ──
   let gr, mtd;
