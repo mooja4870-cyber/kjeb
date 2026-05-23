@@ -683,19 +683,19 @@ function sv(v) {
 function rf() {
   const c = {
     t: hs.filter(h=>h.an.st==="trusted").length,
-    c: hs.filter(h=>h.an.st==="trusted"||h.an.st==="clean").length,
+    c: hs.filter(h=>h.an.st==="clean").length,
     a: hs.length
   };
   document.getElementById("ftb").innerHTML = [
     {k:"trusted", l:`💚 안심 우수 (${c.t})`},
-    {k:"clean",   l:`✅ 안심+양호 (${c.c})`},
+    {k:"clean",   l:`✅ 안심 양호 (${c.c})`},
     {k:"all",     l:`📋 전체 (${c.a})`},
   ].map(f=>`<button class="filter-chip ${cf===f.k?'act':''}" onclick="sf('${f.k}')">${f.l}</button>`).join("");
 }
 function sf(k) { cf=k; rf(); rl(); rmm(); }
 function gf() {
   if (cf==="trusted") return hs.filter(h=>h.an.st==="trusted");
-  if (cf==="clean")   return hs.filter(h=>h.an.st==="trusted"||h.an.st==="clean");
+  if (cf==="clean")   return hs.filter(h=>h.an.st==="clean");
   return hs;
 }
 
