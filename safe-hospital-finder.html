@@ -317,25 +317,19 @@ tailwind.config = {
       <p style="font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;font-weight:700;color:#1b1c1c;text-align:center;margin-bottom:8px;">진료과목을 선택하고 검색하세요</p>
       <p style="font-size:12px;color:#7e7577;text-align:center;line-height:1.7;margin-bottom:16px;">여러 검색어로 동시에 검색하여 더 많은 병원을 찾고,<br>설명 텍스트 및 환자 후기의 키워드 만족도를 분석합니다.</p>
       <div style="background:#fff0f3;border-radius:12px;padding:12px 14px;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-          <span style="width:8px;height:8px;border-radius:50%;background:#516161;flex-shrink:0;"></span>
-          <span style="font-size:11.5px;color:#576867;font-family:'Plus Jakarta Sans',sans-serif;font-weight:600;">💚 안심 우수</span>
-          <span style="font-size:11px;color:#7e7577;">— 추천 후기 및 긍정적 언급 다수</span>
+        <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;">
+          <span style="width:8px;height:8px;border-radius:50%;background:#516161;flex-shrink:0;margin-top:4px;"></span>
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <span style="font-size:11.5px;color:#576867;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;">💚 안심 우수</span>
+            <span style="font-size:11px;color:#7e7577;line-height:1.4;">심평원 평가 등급(항생제 처방 등)이 우수하며, 환자 리뷰에서 뛰어난 친절도와 치료 만족도 등 추천이 다수 검증된 병원입니다.</span>
+          </div>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-          <span style="width:8px;height:8px;border-radius:50%;background:#8BC34A;flex-shrink:0;"></span>
-          <span style="font-size:11.5px;color:#576867;font-family:'Plus Jakarta Sans',sans-serif;font-weight:600;">✅ 안심 양호</span>
-          <span style="font-size:11px;color:#7e7577;">— 평이하고 안정적인 평판</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-          <span style="width:8px;height:8px;border-radius:50%;background:#FFC107;flex-shrink:0;"></span>
-          <span style="font-size:11.5px;color:#576867;font-family:'Plus Jakarta Sans',sans-serif;font-weight:600;">⚠️ 정보 확인</span>
-          <span style="font-size:11px;color:#7e7577;">— 선택 전 웹 후기 참고 권장</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span style="width:8px;height:8px;border-radius:50%;background:#EF5353;flex-shrink:0;"></span>
-          <span style="font-size:11.5px;color:#576867;font-family:'Plus Jakarta Sans',sans-serif;font-weight:600;">🔴 신중 선택</span>
-          <span style="font-size:11px;color:#7e7577;">— 일부 불친절/비용 언급 존재</span>
+        <div style="display:flex;align-items:flex-start;gap:8px;">
+          <span style="width:8px;height:8px;border-radius:50%;background:#8BC34A;flex-shrink:0;margin-top:4px;"></span>
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <span style="font-size:11.5px;color:#576867;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;">✅ 안심 양호</span>
+            <span style="font-size:11px;color:#7e7577;line-height:1.4;">과잉 진료나 불친절 등 부정적인 리스크가 발견되지 않아, 대기 시간과 비용 면에서 마음 편히 방문할 수 있는 안정적인 병원입니다.</span>
+          </div>
         </div>
       </div>
     </div>
@@ -369,8 +363,6 @@ tailwind.config = {
       <div class="map-legend">
         <div class="map-legend-row"><span class="legend-dot" style="background:#516161;"></span> 안심 우수</div>
         <div class="map-legend-row"><span class="legend-dot" style="background:#8BC34A;"></span> 안심 양호</div>
-        <div class="map-legend-row"><span class="legend-dot" style="background:#FFC107;"></span> 정보 확인</div>
-        <div class="map-legend-row"><span class="legend-dot" style="background:#EF5353;"></span> 신중 선택</div>
       </div>
     </div>
 
