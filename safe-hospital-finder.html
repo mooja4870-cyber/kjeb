@@ -519,7 +519,7 @@ const SC = {
   unknown: { l:"정보 부족",   e:"🔍", bg:"#efeded", bd:"#7e7577", tx:"#4d4547", mc:"#7e7577" },
 };
 
-// 병원 등급별 배지 맵
+// 병원 등급별 배지 맵 (S/A/B/D 대신 군/그룹 표현으로 순화)
 const GR = {
   S: { l:"우수군", e:"🌟", bg:"#d4e6e5", bd:"#0F6E56", tx:"#04342C", desc:"(추천 언급 다수)" },
   A: { l:"양호군", e:"✅", bg:"#e8f5ff", bd:"#185FA5", tx:"#042C53", desc:"(안정적인 평판)" },
@@ -527,14 +527,55 @@ const GR = {
   D: { l:"신중군", e:"🚫", bg:"#ffdad6", bd:"#A32D2D", tx:"#501313", desc:"(일부 아쉬운 후기 존재)" }
 };
 
+// RG 데이터는 regions.js에서 로드됩니다
+
 let ss="dental", cf="trusted", cv="list", hs=[], eid=null, hid=null;
 let uLat=37.6376, uLng=126.832, lN="고양시", lF="고양시";
 let mp=null, mks=[], um=null, mkm={}, sa=false;
 let s1=null, s2v=null, s3v=null;
+let sGradeThreshold = 15;
 
 function strip(s) { return (s||"").replace(/<[^>]*>/g,""); }
 function esc(s) { return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 function dst(a,b,c,d) { const R=6371e3,x=(c-a)*Math.PI/180,y=(d-b)*Math.PI/180;const z=Math.sin(x/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(y/2)**2;return Math.round(R*2*Math.atan2(Math.sqrt(z),Math.sqrt(1-z))); }
+
+function az(title, desc, cat, addr, hiraData) {
+  const t = (strip(title)+" "+strip(desc)+" "+strip(cat)).toLowerCase();
+  if (!t.trim()) return {s:null,st:"unknown",nc:0,pc:0,dt:[],gr:"C",mtd:"정보부족",hc:{pp:0,ad:0,de:0,ps:0}};
+  const nh = NW.filter(k=>t.includes(k)), ph = PW.filter(k=>t.includes(k));
+  let nc=nh.length, pc=ph.length; const dt=[];
+  if (nc) dt.push({type:"neg",keywords:nh});
+  if (pc) dt.push({type:"pos",keywords:ph});
+
+  const isRealHira = hiraData !== null && hiraData !== undefined;
+  
+  const hc = isRealHira ? hiraData.hc : {
+    pp: 75, ad: 70, de: 65, ps: 70
+  };
+
+  let sc = 75;
+  if (isRealHira) {
+     sc = (hc.pp + hc.ad + hc.de + hc.ps) / 4;
+     if (hiraData.doctorCnt >= 3) sc += 5;
+  }
+  
+  if (pc > 0) sc += 10;
+  if (nc > 0) sc -= 20;
+
+  let st = "clean";
+  if (sc >= 85) st = "trusted";
+  else if (sc >= 70) st = "clean";
+  else if (sc >= 50) st = "caution";
+  else st = "warning";
+
+  let gr = 'A';
+  if (sc >= 85) gr = 'S';
+  else if (sc >= 70) gr = 'A';
+  else if (sc >= 50) gr = 'B';
+  else gr = 'D';
+
+  return {s:sc, st, nc, pc, dt, gr, mtd:"실제분석", hc};
+}
 
 // ── 진료과 버튼 렌더 ─────────────────────────────────────────────
 function rsg() {
@@ -618,7 +659,7 @@ function rmm() {
   ls.forEach(h=>{
     const c = SC[h.an.st];
     const ic = L.divIcon({className:'',html:`<div style="position:relative"><div style="width:32px;height:32px;background:${c.mc};border:3px solid #fff;border-radius:50%;box-shadow:0 2px 8px ${c.mc}50;display:flex;align-items:center;justify-content:center;font-size:14px">${sp.i}</div></div>`,iconSize:[32,32],iconAnchor:[16,16],popupAnchor:[0,-18]});
-    const pp = `<div class="popup-inner"><div class="popup-name">${sp.i} ${esc(h.name)}</div><div class="popup-addr">📍 ${h.dist}m · ${esc(h.addr)}</div><span class="status-badge" style="background:${c.bg};border-color:${c.bd};color:${c.tx}">${c.e} ${c.l}</span></div>`;
+    const pp = `<div class="popup-inner"><div class="popup-name">${sp.i} ${esc(h.name)}</div><div class="popup-addr">📍 ${h.dist}m · ${esc(h.addr)}</div><span class="status-badge" style="background:${c.bg};border-color:${c.bd};color:${c.tx}">${c.e} ${c.l}</span>${h.phone?`<div style="margin-top:6px;font-size:10.5px;color:#526069;font-family:'Plus Jakarta Sans',sans-serif;">📞 ${esc(h.phone)}</div>`:''}</div>`;
     const m = L.marker([h.lat,h.lng],{icon:ic}).addTo(mp).bindPopup(pp,{maxWidth:250});
     m.on('click',()=>{ hid=h.id; rl(); });
     mks.push(m); mkm[h.id]=m;
@@ -634,11 +675,11 @@ function fm(id) {
 
 // ── 병원 카드 토글 ────────────────────────────────────────────────
 const tc = (id) => {
-    eid = eid === id ? null : id; 
-    hid = id; 
-    rl();
-    if(eid) setTimeout(()=>{ const el=document.getElementById("c-"+id); if(el) el.scrollIntoView({behavior:"smooth",block:"nearest"}); },100); 
-  };
+  eid = eid === id ? null : id; 
+  hid = id; 
+  rl();
+  if(eid) setTimeout(()=>{ const el=document.getElementById("c-"+id); if(el) el.scrollIntoView({behavior:"smooth",block:"nearest"}); },100); 
+};
 
 // ── 병원 목록 렌더 ────────────────────────────────────────────────
 function rl() {
@@ -651,30 +692,55 @@ function rl() {
     let dt = '';
     if (x) {
       dt = `
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:70px;padding:10px;border-radius:12px;background:#fbf9f8;text-align:center;">
+            <div style="font-size:9.5px;color:#7e7577;font-family:'Plus Jakarta Sans',sans-serif;margin-bottom:2px;">아쉬움 언급</div>
+            <div style="font-size:24px;font-weight:800;color:${h.an.nc>0?'#ba1a1a':'#516161'};font-family:'Plus Jakarta Sans',sans-serif;">${h.an.nc}개</div>
+          </div>
+          <div style="flex:1;min-width:70px;padding:10px;border-radius:12px;background:#fbf9f8;text-align:center;">
+            <div style="font-size:9.5px;color:#7e7577;font-family:'Plus Jakarta Sans',sans-serif;margin-bottom:2px;">추천 언급</div>
+            <div style="font-size:24px;font-weight:800;color:#526069;font-family:'Plus Jakarta Sans',sans-serif;">${h.an.pc}개</div>
+          </div>
+        </div>
+        
         <div style="background:#f5f3f3;border-radius:12px;padding:12px;margin-bottom:12px;">
           <div style="font-size:12px;font-weight:600;color:#4d4547;margin-bottom:8px;font-family:'Plus Jakarta Sans',sans-serif;">📊 심평원(HIRA) 공공데이터 평가</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
             <div style="background:#fff;border-radius:8px;padding:8px;text-align:center;border-left:3px solid #516161;">
-              <div style="font-size:9px;color:#7e7577;margin-bottom:2px;">비용 만족도</div>
+              <div style="font-size:9px;color:#7e7577;margin-bottom:2px;">비용 만족도 (비급여)</div>
               <div style="font-size:16px;font-weight:700;color:#516161;font-family:'Plus Jakarta Sans',sans-serif;">${h.an.hc.pp}%</div>
             </div>
             <div style="background:#fff;border-radius:8px;padding:8px;text-align:center;border-left:3px solid #526069;">
-              <div style="font-size:9px;color:#7e7577;margin-bottom:2px;">대기 만족도</div>
+              <div style="font-size:9px;color:#7e7577;margin-bottom:2px;">대기/접수 만족도</div>
               <div style="font-size:16px;font-weight:700;color:#526069;font-family:'Plus Jakarta Sans',sans-serif;">${h.an.hc.ad}%</div>
+            </div>
+            <div style="background:#fff;border-radius:8px;padding:8px;text-align:center;border-left:3px solid #F59E0B;">
+              <div style="font-size:9px;color:#7e7577;margin-bottom:2px;">치료 만족도 (항생제)</div>
+              <div style="font-size:16px;font-weight:700;color:#F59E0B;font-family:'Plus Jakarta Sans',sans-serif;">${h.an.hc.de}%</div>
+            </div>
+            <div style="background:#fff;border-radius:8px;padding:8px;text-align:center;border-left:3px solid #0EA5E9;">
+              <div style="font-size:9px;color:#7e7577;margin-bottom:2px;">설명 친절도</div>
+              <div style="font-size:16px;font-weight:700;color:#0EA5E9;font-family:'Plus Jakarta Sans',sans-serif;">${h.an.hc.ps}%</div>
             </div>
           </div>
           <div style="margin-top:8px;font-size:10.5px;color:#516161;text-align:right;font-weight:600;">
-             ✓ HIRA 연동 완료 ─ 처방: ${h.hiraData.antiGrade || '정보없음'}
+             ✓ HIRA 연동 완료 ─ 처방: ${h.hiraData ? h.hiraData.antiGrade || '정보없음' : '정보없음'}
           </div>
         </div>
         
         <div style="background:#fbf9f8;border-radius:12px;padding:10px;margin-bottom:12px;border-left:4px solid ${g.bd};">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-            <div style="font-weight:600;color:${g.tx};font-size:14px;font-family:'Plus Jakarta Sans',sans-serif;">${g.e} ${g.l}</div>
-            <div style="font-size:11px;background:${g.bg};color:${g.tx};padding:2px 6px;border-radius:4px;font-weight:600;font-family:'Plus Jakarta Sans',sans-serif;">점수: ${Math.round(h.an.sc)}점</div>
+            <div style="font-weight:600;color:${g.tx};font-size:14px;font-family:'Plus Jakarta Sans',sans-serif;">${g.e} ${g.l} ${g.desc}</div>
+            <div style="font-size:11px;background:${g.bg};color:${g.tx};padding:2px 6px;border-radius:4px;font-weight:600;font-family:'Plus Jakarta Sans',sans-serif;">분석: ${h.an.mtd}</div>
           </div>
         </div>
-        ${h.link?`<a href="${h.link}" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="naver-link">🔗 네이버 정보</a>`:''}`;
+        
+        ${h.desc?`<div style="padding:10px 12px;border-radius:12px;background:#f5f3f3;font-size:11.5px;color:#4d4547;line-height:1.6;margin-bottom:8px;">📄 ${esc(h.desc)}</div>`:''}
+        ${h.an.dt.length ? h.an.dt.map(d=>`<div class="detail-box ${d.type}"><strong>${d.type==='pos'?'👍 추천':'⚠️ 아쉬움'}</strong>  ${d.keywords.join(", ")}</div>`).join("") : '<div style="text-align:center;padding:8px;font-size:12px;color:#7e7577;">특이 키워드 없음</div>'}
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+          ${h.phone?`<div style="padding:8px 12px;border-radius:10px;background:#e8f5ff;font-size:11.5px;color:#526069;font-family:'Plus Jakarta Sans',sans-serif;font-weight:600;">📞 ${esc(h.phone)}</div>`:''}
+          ${h.link?`<a href="${h.link}" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="naver-link">🔗 네이버</a>`:''}
+        </div>`;
     }
 
     return `<div id="c-${h.id}" class="hcard ${x?'exp':''}" style="border-left-color:${g.bd};animation:fadeInUp ${Math.min(.25+i*.04,.7)}s ease both;" onclick="tc('${h.id}')">
@@ -686,7 +752,10 @@ function rl() {
           </div>
           <div style="font-size:11.5px;color:#7e7577;margin-bottom:7px;">📍 ${h.dist>0?h.dist+'m · ':''}${esc(h.addr)}</div>
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-            <span class="status-badge" style="background:${g.bg};border-color:${g.bd};color:${g.tx};">${g.e} ${g.l}</span>
+            <span class="status-badge" style="background:${g.bg};border-color:${g.bd};color:${g.tx};">
+              ${g.e} ${g.l}
+            </span>
+            ${h.cat?`<span style="font-size:11px;color:#7e7577;font-family:'Plus Jakarta Sans',sans-serif;">${esc(h.cat)}</span>`:''}
           </div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:center;gap:6px;margin-left:8px;">
@@ -711,31 +780,31 @@ async function doSearch() {
   eid=null; hid=null; hs=[];
 
   const sp = SP.find(s=>s.id===ss);
-  
-  try {
-    const r = await fetch(`${API}/api/hira-list?location=${encodeURIComponent(lF)}&category=${encodeURIComponent(sp.k)}`);
-    const data = await r.json();
-    
-    document.getElementById("la").style.display = "none";
-    if (!data.items || !data.items.length) {
-        document.getElementById("ea").style.display = "block";
-        btn.disabled=false; usb(); return;
-    }
+  const items = await multiSearch(lF, sp.k);
+  document.getElementById("la").style.display = "none";
 
-    hs = data.items.map((i, idx) => az(
-        i.title, i.description, i.category, i.address, i.mapx, i.mapy, i.link, idx, i.hiraData
-      ));
-
-    hs.forEach(h => { h.dist = dst(uLat, uLng, h.lat, h.lng); });
-    hs.sort((a,b) => b.an.sc - a.an.sc);
-
-    document.getElementById("ra").style.display = "block";
-    document.getElementById("rs").textContent = `✅ ${hs.length}개 ${sp.l} 분석 완료`;
-    btn.disabled=false; cf="trusted"; cv="list";
-    rf(); rl(); il();
-  } catch(e) {
-    document.getElementById("la").style.display = "none";
+  if (!items.length) {
     document.getElementById("ea").style.display = "block";
+    document.getElementById("ea").innerHTML = `<div style="margin:0 16px;padding:16px;border-radius:16px;background:#ffdad6;border:1px solid #EF5353;font-size:12px;color:#93000a;line-height:1.6;font-family:'Plus Jakarta Sans',sans-serif;">🔍 "${lN}" 주변에서 ${sp.l}를 찾을 수 없습니다.<br><br>⚠️ <strong>node server.js</strong>가 실행 중인지 확인해주세요.</div>`;
+    btn.disabled=false; usb(); return;
+  }
+
+  hs = items.map((it,i)=>{
+    const lat = parseFloat(it.mapy)/1e7, lng = parseFloat(it.mapx)/1e7;
+    const addr = it.roadAddress||it.address||"";
+    return { id:"n"+i, name:strip(it.title), lat, lng,
+      an: az(it.title, it.description, it.category, addr, it.hiraData),
+      dist: dst(uLat,uLng,lat,lng),
+      addr,
+      phone: strip(it.telephone),
+      desc: strip(it.description),
+      cat: strip(it.category),
+      link: it.link||"",
+      hiraLoaded: true,
+      hiraLoading: false,
+      hiraData: it.hiraData || {doctorCnt:1, antiGrade:"정보없음"}
+    };
+  });
   const od = {trusted:0,clean:1,caution:2,warning:3,unknown:4};
   const gr_od = {S:0,A:1,B:2,D:3};
   hs.sort((a,b)=>{
