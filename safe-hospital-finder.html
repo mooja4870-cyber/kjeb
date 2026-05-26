@@ -733,7 +733,37 @@ function fm(id) {
 }
 
 // ── 병원 카드 토글 ────────────────────────────────────────────────
-function tc(id) { eid=eid===id?null:id; hid=id; rl(); if(eid) setTimeout(()=>{ const el=document.getElementById("c-"+id); if(el) el.scrollIntoView({behavior:"smooth",block:"nearest"}); },100); }
+function tc(id) { 
+  eid = eid === id ? null : id; 
+  hid = id; 
+  if (eid) {
+    const h = hs.find(v=>v.id===id);
+    if (h && !h.hiraLoading && !h.hiraLoaded) {
+       h.hiraLoading = true;
+       rl();
+       fetch(`${API}/api/hira?name=${encodeURIComponent(h.name)}&addr=${encodeURIComponent(h.addr)}`)
+       .then(r=>r.json())
+       .then(d=>{
+          h.hiraLoading = false;
+          h.hiraLoaded = true;
+          if (d.hc) {
+            h.an.hc = d.hc;
+            h.an.doctorCnt = d.doctorCnt;
+            h.an.antiGrade = d.antiGrade;
+          }
+          if (eid === id) rl();
+       })
+       .catch(e=>{
+          h.hiraLoading = false;
+          h.hiraLoaded = true;
+          console.error(e);
+          if (eid === id) rl();
+       });
+    }
+  }
+  rl(); 
+  if(eid) setTimeout(()=>{ const el=document.getElementById("c-"+id); if(el) el.scrollIntoView({behavior:"smooth",block:"nearest"}); },100); 
+}
 
 // ── 병원 목록 렌더 ────────────────────────────────────────────────
 function rl() {
@@ -758,10 +788,16 @@ function rl() {
         </div>
         
         <div style="background:#f5f3f3;border-radius:12px;padding:12px;margin-bottom:12px;">
-          <div style="font-size:12px;font-weight:600;color:#4d4547;margin-bottom:8px;font-family:'Plus Jakarta Sans',sans-serif;">📊 환자 후기 AI 키워드 평가 만족도</div>
+          <div style="font-size:12px;font-weight:600;color:#4d4547;margin-bottom:8px;font-family:'Plus Jakarta Sans',sans-serif;">📊 심평원(HIRA) 공공데이터 평가</div>
+          ${h.hiraLoading ? `
+             <div style="text-align:center;padding:20px;font-size:12px;color:#7e7577;">
+               <div class="spinner" style="width:20px;height:20px;border-width:2px;margin:0 auto 8px;"></div>
+               HIRA 공공데이터 실시간 조회 중...
+             </div>
+          ` : `
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
             <div style="background:#fff;border-radius:8px;padding:8px;text-align:center;border-left:3px solid #516161;">
-              <div style="font-size:9px;color:#7e7577;margin-bottom:2px;">비용 만족도</div>
+              <div style="font-size:9px;color:#7e7577;margin-bottom:2px;">비용 만족도 (비급여)</div>
               <div style="font-size:16px;font-weight:700;color:#516161;font-family:'Plus Jakarta Sans',sans-serif;">${h.an.hc.pp}%</div>
             </div>
             <div style="background:#fff;border-radius:8px;padding:8px;text-align:center;border-left:3px solid #526069;">
@@ -769,7 +805,7 @@ function rl() {
               <div style="font-size:16px;font-weight:700;color:#526069;font-family:'Plus Jakarta Sans',sans-serif;">${h.an.hc.ad}%</div>
             </div>
             <div style="background:#fff;border-radius:8px;padding:8px;text-align:center;border-left:3px solid #F59E0B;">
-              <div style="font-size:9px;color:#7e7577;margin-bottom:2px;">치료 만족도</div>
+              <div style="font-size:9px;color:#7e7577;margin-bottom:2px;">치료 만족도 (항생제)</div>
               <div style="font-size:16px;font-weight:700;color:#F59E0B;font-family:'Plus Jakarta Sans',sans-serif;">${h.an.hc.de}%</div>
             </div>
             <div style="background:#fff;border-radius:8px;padding:8px;text-align:center;border-left:3px solid #0EA5E9;">
@@ -777,6 +813,16 @@ function rl() {
               <div style="font-size:16px;font-weight:700;color:#0EA5E9;font-family:'Plus Jakarta Sans',sans-serif;">${h.an.hc.ps}%</div>
             </div>
           </div>
+          ${h.hiraLoaded && h.an.doctorCnt !== undefined ? `
+          <div style="margin-top:8px;font-size:10.5px;color:#516161;text-align:right;font-weight:600;">
+             ✓ HIRA 연동 완료 ─ 의사 수: ${h.an.doctorCnt}명 | 항생제 처방: ${h.an.antiGrade || '정보없음'}
+          </div>
+          ` : `
+          <div style="margin-top:8px;font-size:10px;color:#ba1a1a;text-align:right;">
+             HIRA 데이터 매칭 실패 (가본값 표시)
+          </div>
+          `}
+          `}
         </div>
         
         <div style="background:#fbf9f8;border-radius:12px;padding:10px;margin-bottom:12px;border-left:4px solid ${g.bd};">
