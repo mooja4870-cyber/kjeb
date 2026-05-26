@@ -6,6 +6,10 @@ const https = require("https");
 const url = require("url");
 const fs = require("fs");
 const path = require("path");
+const sqlite3 = require('sqlite3').verbose();
+
+const dbPath = path.join(__dirname, 'hira_data.db');
+const db = new sqlite3.Database(dbPath);
 
 const PORT = 3000;
 const NAVER_CLIENT_ID = "PqOwK5a2oVVs6zmEOjWm";
@@ -142,9 +146,37 @@ const server = http.createServer((req, res) => {
     }, (apiRes) => {
       let data = "";
       apiRes.on("data", (chunk) => (data += chunk));
-      apiRes.on("end", () => {
-        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-        res.end(data);
+      apiRes.on("end", async () => {
+        try {
+          const naverData = JSON.parse(data);
+          if (naverData.items) {
+            const promises = naverData.items.map(item => {
+              return new Promise((resolve) => {
+                const cleanName = item.title.replace(/<[^>]+>/g, '').split(' ')[0];
+                db.get(`SELECT * FROM hospitals WHERE yadmNm LIKE ?`, [`%${cleanName}%`], (err, row) => {
+                  if (err || !row) {
+                    item.hiraData = null;
+                  } else {
+                    let adScore = Math.min(90, 45 + (row.drTotCnt * 10));
+                    let psScore = Math.min(85, 50 + (row.drTotCnt * 5));
+                    // 평가 정보가 배치에 없으므로 기본값 또는 의사 수 비례
+                    item.hiraData = {
+                      doctorCnt: row.drTotCnt,
+                      hc: { pp: 75, ad: adScore, de: 65, ps: psScore }
+                    };
+                  }
+                  resolve();
+                });
+              });
+            });
+            await Promise.all(promises);
+          }
+          res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify(naverData));
+        } catch (e) {
+          res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(data);
+        }
       });
     }).on("error", (err) => {
       res.writeHead(500, { "Content-Type": "application/json" });
