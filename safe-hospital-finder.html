@@ -686,33 +686,13 @@ function az(title, desc, cat, addr, extraData) {
 
   // OPI 종합 점수
   let sc = Math.round((cons * 0.4) + (stab * 0.3) + (solo * 0.3));
-  if (pc > 0) sc += 10;
-  if (nc > 0) sc -= 20;
+  if (pc > 0) sc += (pc * 0.5); // 동점자 방지를 위한 미세 조정
+  if (nc > 0) sc -= (nc * 10);
   
-  // [요구사항 반영] 양호 등급(65점 내외) 병원 중 약 15~20% 확률로 가산점을 주어 '안심 우수'가 나타나게 함
-  // hash 값을 이용하여 검색할 때마다 결과가 바뀌지 않고 일관성 유지
-  if (sc >= 60 && sc < 80 && (hash % 100) < 18) {
-    sc += 18; // 우수 등급(80점 이상) 진입을 위한 럭키 부스트
-    cons = Math.min(100, cons + 15);
-    stab = Math.min(100, stab + 15);
-    solo = Math.min(100, solo + 15);
-  }
-
   sc = Math.max(0, Math.min(100, sc));
 
-  let st = "clean";
-  if (sc >= 80) st = "trusted";
-  else if (sc >= 65) st = "clean";
-  else if (sc >= 45) st = "caution";
-  else st = "warning";
-
-  let gr = 'A';
-  if (sc >= 80) gr = 'S';
-  else if (sc >= 65) gr = 'A';
-  else if (sc >= 45) gr = 'B';
-  else gr = 'D';
-
-  return {s:sc, st, nc, pc, dt, gr, mtd:"과잉예방분석", opi:{cons, stab, solo}};
+  // 상대평가를 위해 임시 상태 반환 (doSearch에서 최종 할당)
+  return {s:sc, st:"unknown", nc, pc, dt, gr:"D", mtd:"상대평가(OPI)", opi:{cons, stab, solo}};
 }
 
 // ── 진료과 버튼 렌더 ─────────────────────────────────────────────
@@ -987,7 +967,28 @@ async function doSearch() {
       cat: strip(it.category),
       link: it.link||""
     };
-  }).filter(h => h.an.st === "trusted" || h.an.st === "clean");
+  });
+
+  // [상대평가 로직] 1차 정렬: OPI 점수 순 (내림차순)
+  hs.sort((a, b) => b.an.s - a.an.s);
+
+  // 등급별 커트라인 계산 (S: 상위 15%, A: 상위 50%까지, B: 상위 90%까지)
+  const total = hs.length;
+  const s_limit = Math.max(1, Math.ceil(total * 0.15));
+  const a_limit = Math.max(s_limit, Math.ceil(total * 0.50));
+  const b_limit = Math.max(a_limit, Math.ceil(total * 0.90));
+
+  // 등급 강제 할당
+  hs.forEach((h, i) => {
+    if (i < s_limit) { h.an.st = "trusted"; h.an.gr = "S"; }
+    else if (i < a_limit) { h.an.st = "clean"; h.an.gr = "A"; }
+    else if (i < b_limit) { h.an.st = "caution"; h.an.gr = "B"; }
+    else { h.an.st = "warning"; h.an.gr = "D"; }
+  });
+
+  // 사용자 뷰용 필터링 (우수/양호 등급만 지도 및 목록에 표시)
+  hs = hs.filter(h => h.an.st === "trusted" || h.an.st === "clean");
+
   const od = {trusted:0,clean:1,caution:2,warning:3,unknown:4};
   const gr_od = {S:0,A:1,B:2,D:3};
   hs.sort((a,b)=>{
