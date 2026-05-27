@@ -661,55 +661,57 @@ function az(title, desc, cat, addr, extraData) {
   const doctorCnt = (extraData && extraData.doctorCnt) ? extraData.doctorCnt : 1;
 
   // 1. 보존치료 전문성 (0~100, 가중치 40%)
-  let cons = 65;
+  let cons = 50;
   cons += CONS_KW.filter(k => t.includes(k)).length * 12;
   cons -= ANTI_CONS_KW.filter(k => t.includes(k)).length * 12;
   if (t_clean.includes("보존과")) cons += 20;
   cons += (hash % 15) - 5;
-  cons = Math.max(10, Math.min(100, cons));
 
   // 2. 운영 안정성 (0~100, 가중치 30%)
-  let stab = 65;
+  let stab = 50;
   stab += STABLE_KW.filter(k => t.includes(k)).length * 12;
   stab -= UNSTABLE_KW.filter(k => t.includes(k)).length * 10;
   stab += (hash % 20) - 8;
-  stab = Math.max(10, Math.min(100, stab));
 
   // 3. 원장 직접 진료 (0~100, 가중치 30%)
-  let solo = 65;
+  let solo = 50;
   solo += SOLO_KW.filter(k => t.includes(k)).length * 15;
-  if (doctorCnt === 1) solo += 15;
-  else if (doctorCnt <= 3) solo += 0;
-  else solo -= 15;
+  if (doctorCnt === 1) solo += 10;
+  else if (doctorCnt <= 3) solo += 5;
+  else solo -= 10;
   solo += (hash % 12) - 4;
+
+  // 가상 리뷰 기반 가점 (상위 15% 우수, 다음 30% 양호 유도)
+  if ((hash % 100) < 15) {
+    cons += 20; stab += 20; solo += 20;
+  } else if ((hash % 100) < 45) {
+    cons += 10; stab += 10; solo += 10;
+  }
+
+  cons = Math.max(10, Math.min(100, cons));
+  stab = Math.max(10, Math.min(100, stab));
   solo = Math.max(10, Math.min(100, solo));
 
   // OPI 종합 점수
   let sc = Math.round((cons * 0.4) + (stab * 0.3) + (solo * 0.3));
-  if (pc > 0) sc += 10;
-  if (nc > 0) sc -= 20;
+  if (pc >= 30) sc += 15;
+  else if (pc >= 15) sc += 10;
+  else if (pc > 0) sc += 5;
   
-  // [요구사항 반영] 양호 등급(65점 내외) 병원 중 약 15~20% 확률로 가산점을 주어 '안심 우수'가 나타나게 함
-  // hash 값을 이용하여 검색할 때마다 결과가 바뀌지 않고 일관성 유지
-  if (sc >= 60 && sc < 80 && (hash % 100) < 18) {
-    sc += 18; // 우수 등급(80점 이상) 진입을 위한 럭키 부스트
-    cons = Math.min(100, cons + 15);
-    stab = Math.min(100, stab + 15);
-    solo = Math.min(100, solo + 15);
-  }
-
+  if (nc > 0) sc -= (nc * 15);
+  
   sc = Math.max(0, Math.min(100, sc));
 
   let st = "clean";
-  if (sc >= 80) st = "trusted";
-  else if (sc >= 65) st = "clean";
-  else if (sc >= 45) st = "caution";
+  if (sc >= 85) st = "trusted";
+  else if (sc >= 70) st = "clean";
+  else if (sc >= 50) st = "caution";
   else st = "warning";
 
   let gr = 'A';
-  if (sc >= 80) gr = 'S';
-  else if (sc >= 65) gr = 'A';
-  else if (sc >= 45) gr = 'B';
+  if (sc >= 85) gr = 'S';
+  else if (sc >= 70) gr = 'A';
+  else if (sc >= 50) gr = 'B';
   else gr = 'D';
 
   return {s:sc, st, nc, pc, dt, gr, mtd:"과잉예방분석", opi:{cons, stab, solo}};
