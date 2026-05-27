@@ -53,7 +53,7 @@ const server = http.createServer((req, res) => {
   if (parsed.pathname === "/search") {
     const query = parsed.query.query || "";
     const display = parsed.query.display || "20";
-    const sort = parsed.query.sort || "comment";
+    const sort = parsed.query.sort || "random";
     const apiUrl = `https://openapi.naver.com/v1/search/local.json?query=${encodeURIComponent(query)}&display=${display}&sort=${sort}`;
 
     https.get(apiUrl, {

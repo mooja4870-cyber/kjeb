@@ -435,7 +435,7 @@ const API = window.location.hostname === "localhost" ? "http://localhost:3000" :
 
 async function napi(q, n=5) {
   try {
-    const r = await fetch(`${API}/search?query=${encodeURIComponent(q)}&display=${n}&sort=comment`);
+    const r = await fetch(`${API}/search?query=${encodeURIComponent(q)}&display=${n}&sort=random`);
     const d = await r.json();
     return d.items || [];
   } catch(e) { console.error("API:", e); return []; }
@@ -496,18 +496,29 @@ const AREA_MAP = {
 
 // ── 진료과 & 분석 데이터 ──────────────────────────────────────────
 const SP = [
-  {id:"dental",l:"치과",i:"🦷",c:"#4ECDC4",r:1,k:"치과"},
-  {id:"ortho",l:"정형외과",i:"🦴",c:"#FF6B6B",r:1,k:"정형외과"},
-  {id:"neuro",l:"신경외과",i:"🧠",c:"#A78BFA",r:1,k:"신경외과"},
-  {id:"ent",l:"이비인후과",i:"👂",c:"#F59E0B",r:1,k:"이비인후과"},
-  {id:"int",l:"내과",i:"🫀",c:"#EC4899",r:2,k:"내과"},
-  {id:"ped",l:"소아과",i:"👶",c:"#6366F1",r:2,k:"소아청소년과"},
-  {id:"eye",l:"안과",i:"👁️",c:"#14B8A6",r:2,k:"안과"},
-  {id:"obg",l:"산부인과",i:"🤰",c:"#F472B6",r:2,k:"산부인과"},
-  {id:"skn",l:"피부과",i:"✨",c:"#8B5CF6",r:3,k:"피부과"},
-  {id:"uro",l:"비뇨의학과",i:"🏥",c:"#0EA5E9",r:3,k:"비뇨기과"},
-  {id:"kor",l:"한의원",i:"🍃",c:"#22C55E",r:3,k:"한의원"},
+  {id:"dental",l:"치과",i:"🦷",c:"#4ECDC4",r:1,k:"치과",cats:["치과"],words:["치과"]},
+  {id:"ortho",l:"정형외과",i:"🦴",c:"#FF6B6B",r:1,k:"정형외과",cats:["정형외과"],words:["정형외과"]},
+  {id:"neuro",l:"신경외과",i:"🧠",c:"#A78BFA",r:1,k:"신경외과",cats:["신경외과","신경과"],words:["신경외과","신경과"]},
+  {id:"ent",l:"이비인후과",i:"👂",c:"#F59E0B",r:1,k:"이비인후과",cats:["이비인후과"],words:["이비인후과"]},
+  {id:"int",l:"내과",i:"🫀",c:"#EC4899",r:2,k:"내과",cats:["내과"],words:["내과"]},
+  {id:"ped",l:"소아과",i:"👶",c:"#6366F1",r:2,k:"소아청소년과",cats:["소아청소년과","소아과"],words:["소아청소년과","소아과","소아"]},
+  {id:"eye",l:"안과",i:"👁️",c:"#14B8A6",r:2,k:"안과",cats:["안과"],words:["안과"]},
+  {id:"obg",l:"산부인과",i:"🤰",c:"#F472B6",r:2,k:"산부인과",cats:["산부인과"],words:["산부인과","여성의원"]},
+  {id:"skn",l:"피부과",i:"✨",c:"#8B5CF6",r:3,k:"피부과",cats:["피부과"],words:["피부과","피부의원"]},
+  {id:"uro",l:"비뇨의학과",i:"🏥",c:"#0EA5E9",r:3,k:"비뇨기과",cats:["비뇨의학과","비뇨기과"],words:["비뇨의학과","비뇨기과","비뇨"]},
+  {id:"kor",l:"한의원",i:"🍃",c:"#22C55E",r:3,k:"한의원",cats:["한의원","한방병원"],words:["한의원","한방병원","한방"]},
 ];
+
+function validateSpecialty(h, sp) {
+  const cat = h.cat || "";
+  const name = h.name || "";
+  if (cat.includes("종합병원") || cat.includes("대학병원") || cat.includes("국립병원") || cat.includes("준종합병원")) {
+    return true;
+  }
+  const hasCat = sp.cats.some(c => cat.includes(c));
+  const hasWord = sp.words.some(w => name.includes(w));
+  return hasCat || hasWord;
+}
 const NW = ["과잉진료","과잉","불필요한","바가지","돈만","수술 강요","안해도 될","안 해도 될","필요없는","필요 없는","뜯기","과다청구","사기","MRI 강요","검사 강요","수술 권유","돈벌이","장사","양심없","양심 없","비양심","억지로","강제로","떼어먹","비추","절대 가지마","호구","등쳐먹","뻥튀기","상담실장이","코디네이터가","당일 할인","선납 할인"];
 const PW = [
   "너무 양심적이세요", "양심 치과 인정합니다", "이 동네 최고 양심 병원", "원장님 양심이 대박이네요", "믿고 가는 양심 치과",
@@ -967,7 +978,13 @@ async function doSearch() {
       cat: strip(it.category),
       link: it.link||""
     };
-  });
+  }).filter(h => validateSpecialty(h, sp));
+
+  if (!hs.length) {
+    document.getElementById("ea").style.display = "block";
+    document.getElementById("ea").innerHTML = `<div style="margin:0 16px;padding:16px;border-radius:16px;background:#ffdad6;border:1px solid #EF5353;font-size:12px;color:#93000a;line-height:1.6;font-family:'Plus Jakarta Sans',sans-serif;">🔍 "${lN}" 주변에서 올바른 ${sp.l} 정보를 찾을 수 없습니다. (진료과 매칭 오류 필터링 완료)</div>`;
+    btn.disabled=false; usb(); return;
+  }
 
   // [상대평가 로직] 1차 정렬: OPI 점수 순 (내림차순)
   hs.sort((a, b) => b.an.s - a.an.s);
