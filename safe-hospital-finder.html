@@ -972,9 +972,13 @@ async function doSearch() {
   // [상대평가 로직] 1차 정렬: OPI 점수 순 (내림차순)
   hs.sort((a, b) => b.an.s - a.an.s);
 
-  // 등급별 커트라인 계산 (S: 상위 15%, A: 상위 50%까지, B: 상위 90%까지)
+  // 등급별 커트라인 계산 (S: 상위 5~20% 랜덤, A: 상위 50%까지, B: 상위 90%까지)
   const total = hs.length;
-  const s_limit = Math.max(1, Math.ceil(total * 0.15));
+  // 검색 결과의 첫 번째 병원 이름 hash를 시드로 사용하여 일관성 유지 + 자연스러운 변동
+  const seedStr = hs.length > 0 ? (hs[0].name + hs.length) : "default";
+  const sPctSeed = getHash(seedStr) % 16; // 0~15
+  const sPct = 0.05 + (sPctSeed / 15) * 0.15; // 0.05 ~ 0.20 (5% ~ 20%)
+  const s_limit = Math.max(1, Math.ceil(total * sPct));
   const a_limit = Math.max(s_limit, Math.ceil(total * 0.50));
   const b_limit = Math.max(a_limit, Math.ceil(total * 0.90));
 
