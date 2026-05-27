@@ -100,7 +100,7 @@ const server = http.createServer((req, res) => {
   // 정적 파일 서빙 (html, js, css)
   let filePath;
   if (parsed.pathname === "/" || parsed.pathname === "/index.html") {
-    filePath = path.join(__dirname, "safe-hospital-finder.html");
+    filePath = path.join(__dirname, "index.html");
   } else {
     // /regions.js 등 정적 파일
     filePath = path.join(__dirname, parsed.pathname);

@@ -239,8 +239,25 @@
         if (!isActive) {
           item.classList.add('active');
         }
+        sendHeight(); // update height
       });
     });
+
+    // Streamlit Component Logic
+    function sendHeight() {
+      window.parent.postMessage({
+        isStreamlitMessage: true,
+        type: "streamlit:setFrameHeight",
+        height: document.documentElement.scrollHeight
+      }, "*");
+    }
+    window.addEventListener("load", sendHeight);
+    window.addEventListener("resize", sendHeight);
+    window.parent.postMessage({
+      isStreamlitMessage: true,
+      type: "streamlit:componentReady",
+      apiVersion: 1
+    }, "*");
   </script>
 </body>
 </html>

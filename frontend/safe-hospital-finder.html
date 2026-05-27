@@ -1151,6 +1151,22 @@ function gps() {
 rsg(); usb();
 // 앱 실행 시 자동으로 내 위치(GPS) 권한을 요청하여 현재 위치를 반영
 setTimeout(() => gps(), 300);
+
+// Streamlit Component Logic
+function sendHeight() {
+  window.parent.postMessage({
+    isStreamlitMessage: true,
+    type: "streamlit:setFrameHeight",
+    height: document.documentElement.scrollHeight
+  }, "*");
+}
+window.addEventListener("load", sendHeight);
+window.addEventListener("resize", sendHeight);
+window.parent.postMessage({
+  isStreamlitMessage: true,
+  type: "streamlit:componentReady",
+  apiVersion: 1
+}, "*");
 </script>
 </body>
 </html>
