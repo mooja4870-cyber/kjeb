@@ -755,18 +755,21 @@ function rf() {
   const c = {
     t: hs.filter(h=>h.an.st==="trusted").length,
     c: hs.filter(h=>h.an.st==="clean").length,
+    b: hs.filter(h=>h.an.st==="caution").length,
     a: hs.length
   };
   document.getElementById("ftb").innerHTML = [
     {k:"all",     l:`전체 (${c.a})`},
     {k:"trusted", l:`💚 안심 우수 (${c.t})`},
     {k:"clean",   l:`✅ 안심 양호 (${c.c})`},
+    {k:"caution", l:`⚠️ 일반 참고 (${c.b})`},
   ].map(f=>`<button class="filter-chip ${cf===f.k?'act':''}" onclick="sf('${f.k}')">${f.l}</button>`).join("");
 }
 function sf(k) { cf=k; rf(); rl(); rmm(); }
 function gf() {
   if (cf==="trusted") return hs.filter(h=>h.an.st==="trusted");
   if (cf==="clean")   return hs.filter(h=>h.an.st==="clean");
+  if (cf==="caution") return hs.filter(h=>h.an.st==="caution");
   return hs;
 }
 
@@ -1007,8 +1010,8 @@ async function doSearch() {
     else { h.an.st = "warning"; h.an.gr = "D"; }
   });
 
-  // 사용자 뷰용 필터링 (우수/양호 등급만 지도 및 목록에 표시)
-  hs = hs.filter(h => h.an.st === "trusted" || h.an.st === "clean");
+  // 사용자 뷰용 필터링 (우수/양호/참고 등급 지도 및 목록에 표시, 신중 등급만 제외)
+  hs = hs.filter(h => h.an.st === "trusted" || h.an.st === "clean" || h.an.st === "caution");
 
   const od = {trusted:0,clean:1,caution:2,warning:3,unknown:4};
   const gr_od = {S:0,A:1,B:2,D:3};
@@ -1023,7 +1026,8 @@ async function doSearch() {
 
   document.getElementById("ra").style.display = "block";
   const safe = hs.filter(h=>h.an.st==="trusted"||h.an.st==="clean").length;
-  document.getElementById("rs").textContent = `✅ ${hs.length}개 ${sp.l} 발견 · 우수/양호 ${safe}곳`;
+  const caution = hs.filter(h=>h.an.st==="caution").length;
+  document.getElementById("rs").textContent = `✅ ${hs.length}개 ${sp.l} 발견 (우수/양호 ${safe}곳, 참고 ${caution}곳)`;
 
   btn.disabled=false; cf="all";
   cv="list";
