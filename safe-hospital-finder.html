@@ -13,8 +13,8 @@
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Atkinson+Hyperlegible+Next:wght@400;700&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-<!-- 카카오맵 SDK (API Key 필요) -->
-<script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=675897fa2ce50666f914b1c66a2eccff&libraries=services"></script>
+<!-- 네이버 지도 SDK (NAVER Cloud Platform Maps Client ID 필요) -->
+<script type="text/javascript" src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=YOUR_NCP_MAPS_KEY_ID"></script>
 
 <script id="tailwind-config">
 tailwind.config = {
@@ -877,7 +877,7 @@ function sv(v) {
   document.getElementById("bmv").classList.toggle("act", v==="map");
   document.getElementById("mc").style.display = v==="map" ? "block" : "none";
   document.getElementById("hl").style.display  = v==="list" ? "flex" : "none";
-  if (v==="map") { setTimeout(()=>{ if(mp) { mp.relayout(); rmm(); } }, 120); }
+  if (v==="map") { setTimeout(()=>{ if(mp && window.naver) { naver.maps.Event.trigger(mp, 'resize'); rmm(); } }, 120); }
 }
 
 // ── 필터 칩 렌더 ─────────────────────────────────────────────────
@@ -903,74 +903,68 @@ function gf() {
   return hs;
 }
 
-// ── 지도 (카카오맵 API 전환) ─────────────────────────────────────────────────────────
+// ── 지도 (네이버 지도 API 전환) ─────────────────────────────────────────────────────────
 function il() {
-  if (!window.kakao || !window.kakao.maps) {
-    document.getElementById("map").innerHTML = `<div style="padding:20px;text-align:center;color:#EF5353;font-size:12px;">⚠️ 카카오맵 스크립트를 불러올 수 없습니다.<br>카카오 개발자 센터에서 <b>http://localhost:4156</b> 도메인 등록이 정상적으로 완료되었는지 확인해 주세요. (저장 버튼 클릭 필수)</div>`;
+  if (!window.naver || !window.naver.maps) {
+    document.getElementById("map").innerHTML = `<div style="padding:20px;text-align:center;color:#EF5353;font-size:12px;">⚠️ 네이버 지도를 불러올 수 없습니다.<br>NAVER Cloud Platform 콘솔에서 Maps 애플리케이션의 <b>Web 서비스 URL</b>에 현재 도메인 등록 및 <b>Client ID(ncpKeyId)</b> 적용이 완료되었는지 확인해 주세요.</div>`;
     return;
   }
-  const pos = new kakao.maps.LatLng(uLat, uLng);
+  const pos = new naver.maps.LatLng(uLat, uLng);
   if (!mp) {
-    mp = new kakao.maps.Map(document.getElementById("map"), { center: pos, level: 4 });
+    mp = new naver.maps.Map(document.getElementById("map"), { center: pos, zoom: 15 });
   } else {
     mp.setCenter(pos);
   }
-  
+
   if (um) um.setMap(null);
   const umContent = '<div style="width:16px;height:16px;background:#665c5e;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 8px rgba(102,92,94,.5);animation:bounce 2s infinite"></div>';
-  um = new kakao.maps.CustomOverlay({
+  um = new naver.maps.Marker({
     position: pos,
-    content: umContent,
-    zIndex: 1000
+    map: mp,
+    zIndex: 1000,
+    icon: { content: umContent, anchor: new naver.maps.Point(8, 8) }
   });
-  um.setMap(mp);
-  
+
   rmm();
 }
 
 function rmm() {
-  if (!mp) return;
+  if (!mp || !window.naver || !window.naver.maps) return;
   mks.forEach(m => m.setMap(null)); mks = []; mkm = {};
   const ls = gf(), sp = SP.find(s=>s.id===ss);
-  
-  let bounds = new kakao.maps.LatLngBounds();
-  bounds.extend(new kakao.maps.LatLng(uLat, uLng));
 
   ls.forEach(h=>{
     if (h.an.userOnly) return; // 좌표 없는 사용자 제보 병원은 지도에서 제외
     const c = SC[h.an.st];
-    const pos = new kakao.maps.LatLng(h.lat, h.lng);
-    bounds.extend(pos);
+    const pos = new naver.maps.LatLng(h.lat, h.lng);
 
-    // 커스텀 오버레이 (마커)
+    // 커스텀 아이콘 마커
     const ic = `<div style="position:relative; cursor:pointer;" onclick="tc('${h.id}'); sv('list'); event.stopPropagation();"><div style="width:32px;height:32px;background:${c.mc};border:3px solid #fff;border-radius:50%;box-shadow:0 2px 8px ${c.mc}50;display:flex;align-items:center;justify-content:center;font-size:14px">${sp.i}</div></div>`;
-    
-    const m = new kakao.maps.CustomOverlay({
+
+    const m = new naver.maps.Marker({
       position: pos,
-      content: ic,
-      yAnchor: 1
+      map: mp,
+      icon: { content: ic, anchor: new naver.maps.Point(16, 32) }
     });
-    m.setMap(mp);
     mks.push(m);
     mkm[h.id] = m;
   });
-  
-  // 검색된 모든 병원을 한 화면에 우겨넣지 않고, 내 위치(uLat, uLng) 기준 반경 약 1km가 보이도록 지도 크기 고정
+
+  // 내 위치(uLat, uLng) 기준 반경 약 1km가 보이도록 지도 영역 고정
   const lat1km = 0.009;
   const lng1km = 0.011;
-  const fixedBounds = new kakao.maps.LatLngBounds(
-    new kakao.maps.LatLng(uLat - lat1km, uLng - lng1km),
-    new kakao.maps.LatLng(uLat + lat1km, uLng + lng1km)
+  const fixedBounds = new naver.maps.LatLngBounds(
+    new naver.maps.LatLng(uLat - lat1km, uLng - lng1km),
+    new naver.maps.LatLng(uLat + lat1km, uLng + lng1km)
   );
-  mp.setBounds(fixedBounds);
+  mp.fitBounds(fixedBounds);
 }
-function cmc() { if(mp) mp.panTo(new kakao.maps.LatLng(uLat,uLng)); }
+function cmc() { if(mp) mp.panTo(new naver.maps.LatLng(uLat,uLng)); }
 function fm(id) {
   const h = hs.find(v=>v.id===id); if(!h) return;
   sv('map');
-  setTimeout(()=>{ 
-    if(mp) mp.panTo(new kakao.maps.LatLng(h.lat, h.lng)); 
-    // 커스텀 오버레이 클릭 효과 등 추가 가능
+  setTimeout(()=>{
+    if(mp) mp.panTo(new naver.maps.LatLng(h.lat, h.lng));
   }, 200);
 }
 
@@ -1317,22 +1311,7 @@ async function resolveAndSearch(silentNoSearch) {
       return true;
     }
   } catch (e) {}
-  // 폴백: 카카오 services가 로드돼 있으면 사용
-  if (window.kakao && kakao.maps && kakao.maps.services) {
-    return await new Promise(res => {
-      const gc = new kakao.maps.services.Geocoder();
-      gc.coord2RegionCode(uLng, uLat, (result, status) => {
-        if (status === kakao.maps.services.Status.OK && result && result.length) {
-          const addr = result.find(x => x.region_type === 'H') || result[0];
-          lN = addr.region_3depth_name || addr.address_name;
-          lF = addr.address_name;
-          setGpsLabel(lN);
-          if (!silentNoSearch) doSearch();
-          res(true);
-        } else res(false);
-      });
-    });
-  }
+  // 역지오코딩은 서버 /revgeo(Nominatim) 단일 경로 사용
   return false;
 }
 
