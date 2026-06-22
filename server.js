@@ -11,6 +11,24 @@ const sqlite3 = require('sqlite3').verbose();
 const dbPath = path.join(__dirname, 'hira_data.db');
 const db = new sqlite3.Database(dbPath);
 
+// 실제 후기 집계 캐시 테이블 (네이버 블로그/카페/지식인 결과 재사용 → API 호출 절약)
+db.run(`CREATE TABLE IF NOT EXISTS mention_cache (name TEXT PRIMARY KEY, data TEXT, ts INTEGER)`);
+const MENTION_TTL = 1000 * 60 * 60 * 24; // 24시간
+
+// 실제 후기 감성 키워드 (사람들이 실제로 남기는 표현 기반)
+const POS_KW = ["착한","양심","과잉진료 없","과잉진료없","과잉 없","바가지 없","덤터기 없","강요 없","강요 안","강요하지 않","친절","꼼꼼","세심","자연치아","보존치료","살려주","안 아프게","안아프게","정직","믿고","믿을 만","재방문","단골","추천","만족","최고","좋았","좋아요","good"];
+const NEG_KW = ["과잉진료","과잉 진료","바가지","덤터기","강요","불친절","사기","돈만","불필요한 치료","과다청구","불만","최악","후회","다신 안","두 번 다시","비추","호구","뜯","폭리"];
+
+function stripTag(s) { return (s || "").replace(/<[^>]*>/g, ""); }
+// '과잉진료 없어요' 같은 긍정 부정문이 부정으로 오집계되지 않도록 제거
+function neutralizePos(text) {
+  return text
+    .replace(/과잉\s*진료\s*(가|는|도|를|없)?\s*없/g, " ")
+    .replace(/바가지\s*(가|는|도)?\s*없/g, " ")
+    .replace(/덤터기\s*(가|는|도)?\s*없/g, " ")
+    .replace(/강요\s*(가|는|도|하지)?\s*(없|않)/g, " ");
+}
+
 const PORT = 4156;
 const NAVER_CLIENT_ID = "PqOwK5a2oVVs6zmEOjWm";
 const NAVER_CLIENT_SECRET = "SjK8rv8Nd7";
@@ -93,6 +111,65 @@ const server = http.createServer((req, res) => {
     }).on("error", (err) => {
       res.writeHead(500, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: err.message }));
+    });
+    return;
+  }
+
+  // 실제 후기 집계 API (네이버 블로그 + 카페 + 지식인 실제 글 기반)
+  if (parsed.pathname === "/mentions") {
+    const name = stripTag(parsed.query.name || "").trim();
+    if (!name) {
+      res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify({ error: "name required" }));
+      return;
+    }
+
+    const sendJson = obj => {
+      res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+      res.end(typeof obj === "string" ? obj : JSON.stringify(obj));
+    };
+
+    db.get(`SELECT data, ts FROM mention_cache WHERE name = ?`, [name], (err, row) => {
+      if (!err && row && (Date.now() - row.ts) < MENTION_TTL) {
+        sendJson(row.data);
+        return;
+      }
+
+      const naverSearch = (type) => new Promise(resolve => {
+        const u = `https://openapi.naver.com/v1/search/${type}.json?query=${encodeURIComponent(name)}&display=30&sort=sim`;
+        https.get(u, { headers: { "X-Naver-Client-Id": NAVER_CLIENT_ID, "X-Naver-Client-Secret": NAVER_CLIENT_SECRET } }, r => {
+          let d = "";
+          r.on("data", c => d += c);
+          r.on("end", () => { try { resolve(JSON.parse(d).items || []); } catch { resolve([]); } });
+        }).on("error", () => resolve([]));
+      });
+
+      Promise.all([naverSearch("blog"), naverSearch("cafearticle"), naverSearch("kin")]).then(([blog, cafe, kin]) => {
+        const all = [
+          ...blog.map(i => ({ ...i, src: "블로그" })),
+          ...cafe.map(i => ({ ...i, src: "카페" })),
+          ...kin.map(i => ({ ...i, src: "지식인" })),
+        ];
+        let pos = 0, neg = 0, matched = 0;
+        const samples = [];
+        all.forEach(it => {
+          const title = stripTag(it.title);
+          const desc = stripTag(it.description);
+          const text = title + " " + desc;
+          // 해당 병원을 실제로 언급한 글만 집계 (정직성: 이름 미포함 글 제외)
+          if (!text.includes(name)) return;
+          matched++;
+          const hasPos = POS_KW.some(k => text.includes(k));
+          const negText = neutralizePos(text);
+          const hasNeg = NEG_KW.some(k => negText.includes(k));
+          if (hasPos && !hasNeg) { pos++; samples.push({ t: title, l: it.link, src: it.src, s: "pos" }); }
+          else if (hasNeg && !hasPos) { neg++; samples.push({ t: title, l: it.link, src: it.src, s: "neg" }); }
+          else if (hasPos && hasNeg) { pos++; samples.push({ t: title, l: it.link, src: it.src, s: "mixed" }); }
+        });
+        const result = JSON.stringify({ name, scanned: all.length, matched, pos, neg, samples: samples.slice(0, 6) });
+        db.run(`INSERT OR REPLACE INTO mention_cache (name, data, ts) VALUES (?, ?, ?)`, [name, result, Date.now()]);
+        sendJson(result);
+      });
     });
     return;
   }

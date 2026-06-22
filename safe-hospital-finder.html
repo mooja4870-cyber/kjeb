@@ -623,10 +623,11 @@ const SC = {
 
 // 병원 등급별 배지 맵 (S/A/B/D 대신 군/그룹 표현으로 순화)
 const GR = {
-  S: { l:"우수", e:"🌟", bg:"#d4e6e5", bd:"#0F6E56", tx:"#04342C", desc:"(추천 언급 다수)" },
-  A: { l:"양호", e:"✅", bg:"#e8f5ff", bd:"#185FA5", tx:"#042C53", desc:"(안정적인 평판)" },
-  B: { l:"참고", e:"⚠️", bg:"#fff3e0", bd:"#854F0B", tx:"#412402", desc:"(선택 전 리뷰 참고)" },
-  D: { l:"신중", e:"🚫", bg:"#ffdad6", bd:"#A32D2D", tx:"#501313", desc:"(일부 아쉬운 후기 존재)" }
+  S: { l:"우수", e:"🌟", bg:"#d4e6e5", bd:"#0F6E56", tx:"#04342C", desc:"(실제 추천 후기 다수·아쉬움 없음)" },
+  A: { l:"양호", e:"✅", bg:"#e8f5ff", bd:"#185FA5", tx:"#042C53", desc:"(추천 후기가 아쉬움보다 우세)" },
+  B: { l:"참고", e:"⚠️", bg:"#fff3e0", bd:"#854F0B", tx:"#412402", desc:"(추천·아쉬움 후기 혼재)" },
+  D: { l:"신중", e:"🚫", bg:"#ffdad6", bd:"#A32D2D", tx:"#501313", desc:"(아쉬운 후기 우세)" },
+  none: { l:"후기 없음", e:"🔍", bg:"#efeded", bd:"#7e7577", tx:"#4d4547", desc:"(실제 후기 데이터 없음)" }
 };
 
 // RG 데이터는 regions.js에서 로드됩니다
@@ -641,80 +642,42 @@ function strip(s) { return (s||"").replace(/<[^>]*>/g,""); }
 function esc(s) { return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 function dst(a,b,c,d) { const R=6371e3,x=(c-a)*Math.PI/180,y=(d-b)*Math.PI/180;const z=Math.sin(x/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(y/2)**2;return Math.round(R*2*Math.atan2(Math.sqrt(z),Math.sqrt(1-z))); }
 
+// 병원명에 실제 드러난 진료 특징만 추출 (조작 없음). 후기 수치는 /mentions에서 채움.
 function az(title, desc, cat, addr, extraData) {
-  const t = (strip(title)+" "+strip(desc)+" "+strip(cat)).toLowerCase();
-  if (!t.trim()) return {s:null,st:"unknown",nc:0,pc:0,dt:[],gr:"C",mtd:"정보부족",opi:{cons:50,stab:50,solo:50}};
   const t_clean = strip(title).replace(/<[^>]*>/g, "");
-  const hash = getHash(t_clean + addr);
+  const doctorCnt = (extraData && typeof extraData.doctorCnt === "number") ? extraData.doctorCnt : null;
 
-  // [UI 시연용] 아쉬움/추천 언급 수 가상 생성 (실제 서비스 시 리뷰 스크래핑 데이터로 대체)
-  let nc = 0, pc = (hash % 41) + 12; // 추천 언급 12~52개
-  if ((hash % 100) < 25) nc = (hash % 4) + 1; // 25% 확률로 아쉬움 언급 1~4개 존재
+  const feat = [];
+  if (t_clean.includes("교정")) feat.push("😬 치아교정");
+  if (t_clean.includes("플란트")) feat.push("🦷 임플란트");
+  if (t_clean.includes("어린이") || t_clean.includes("키즈")) feat.push("👶 어린이 진료");
+  if (t_clean.includes("야간")) feat.push("🌙 야간 진료");
+  if (t_clean.includes("일요일")) feat.push("📅 일요일 진료");
+  if (t_clean.includes("여의사")) feat.push("👩 여의사");
+  if (t_clean.includes("보존")) feat.push("🦷 자연치아 보존");
+  if (t_clean.includes("미세현미경")) feat.push("🔬 미세현미경");
 
-  const dt=[];
-  if (nc > 0) dt.push({type:"neg",keywords: [NW[(hash + 3) % NW.length], NW[(hash + 7) % NW.length]].filter((v,i,a)=>a.indexOf(v)===i)});
-  if (pc > 0) dt.push({type:"pos",keywords: [PW[(hash + 5) % PW.length], PW[(hash + 11) % PW.length], PW[(hash + 17) % PW.length]].filter((v,i,a)=>a.indexOf(v)===i).slice(0, 2)});
-  
-  const ft = [];
-  if (t_clean.includes("교정")) ft.push("😬 치아교정");
-  if (t_clean.includes("플란트")) ft.push("🦷 임플란트");
-  if (t_clean.includes("어린이") || t_clean.includes("키즈")) ft.push("👶 어린이 진료");
-  if (t_clean.includes("야간")) ft.push("🌙 야간 진료");
-  if (t_clean.includes("일요일")) ft.push("📅 일요일 진료");
-  if (t_clean.includes("여의사")) ft.push("👩 여의사 전문의");
-  if (t_clean.includes("보존")) ft.push("🦷 자연치아 보존");
-  if (t_clean.includes("미세현미경")) ft.push("🔬 미세현미경 진료");
+  return { pc:0, nc:0, total:0, samples:[], feat, doctorCnt,
+           s:0, st:"unknown", gr:"none", mtd:"실제 후기 집계", loaded:false };
+}
 
-  const specList = CLINIC_FEATS[ss] || [];
-  if (specList.length > 0) {
-    const idx1 = hash % specList.length;
-    const idx2 = (hash + 3) % specList.length;
-    if (!ft.includes(specList[idx1])) ft.push(specList[idx1]);
-    if (!ft.includes(specList[idx2]) && idx1 !== idx2) ft.push(specList[idx2]);
-  }
-  
-  const commList = COMMON_FEATS;
-  const idxC = (hash + 7) % commList.length;
-  if (!ft.includes(commList[idxC])) ft.push(commList[idxC]);
+// 실제 후기(네이버 블로그·카페·지식인) 집계 조회
+async function fetchMentions(name) {
+  try {
+    const r = await fetch(`${API}/mentions?name=${encodeURIComponent(name)}`);
+    return await r.json();
+  } catch(e) { return { pos:0, neg:0, matched:0, samples:[] }; }
+}
 
-  if (ft.length) dt.push({type:"feat",keywords:ft});
-
-  // === 과잉진료 예방 지표 (OPI) ===
-  const doctorCnt = (extraData && extraData.doctorCnt) ? extraData.doctorCnt : 1;
-
-  // 1. 보존치료 전문성 (0~100, 가중치 40%)
-  let cons = 65;
-  cons += CONS_KW.filter(k => t.includes(k)).length * 12;
-  cons -= ANTI_CONS_KW.filter(k => t.includes(k)).length * 12;
-  if (t_clean.includes("보존과")) cons += 20;
-  cons += (hash % 15) - 5;
-  cons = Math.max(10, Math.min(100, cons));
-
-  // 2. 운영 안정성 (0~100, 가중치 30%)
-  let stab = 65;
-  stab += STABLE_KW.filter(k => t.includes(k)).length * 12;
-  stab -= UNSTABLE_KW.filter(k => t.includes(k)).length * 10;
-  stab += (hash % 20) - 8;
-  stab = Math.max(10, Math.min(100, stab));
-
-  // 3. 원장 직접 진료 (0~100, 가중치 30%)
-  let solo = 65;
-  solo += SOLO_KW.filter(k => t.includes(k)).length * 15;
-  if (doctorCnt === 1) solo += 15;
-  else if (doctorCnt <= 3) solo += 0;
-  else solo -= 15;
-  solo += (hash % 12) - 4;
-  solo = Math.max(10, Math.min(100, solo));
-
-  // OPI 종합 점수
-  let sc = Math.round((cons * 0.4) + (stab * 0.3) + (solo * 0.3));
-  if (pc > 0) sc += (pc * 0.5); // 동점자 방지를 위한 미세 조정
-  if (nc > 0) sc -= (nc * 10);
-  
-  sc = Math.max(0, Math.min(100, sc));
-
-  // 상대평가를 위해 임시 상태 반환 (doSearch에서 최종 할당)
-  return {s:sc, st:"unknown", nc, pc, dt, gr:"D", mtd:"상대평가(OPI)", opi:{cons, stab, solo}};
+// 실제 긍정/부정 언급 수만으로 등급 산정 (가중치·난수 없음)
+function gradeFromMentions(an) {
+  const pos = an.pc, neg = an.nc;
+  an.s = pos - neg; // 순(純) 긍정 언급 수
+  if (pos === 0 && neg === 0)      { an.st = "unknown"; an.gr = "none"; }
+  else if (neg > pos)              { an.st = "warning"; an.gr = "D"; }
+  else if (pos >= 3 && neg === 0)  { an.st = "trusted"; an.gr = "S"; }
+  else if (pos > neg)              { an.st = "clean";   an.gr = "A"; }
+  else                            { an.st = "caution"; an.gr = "B"; }
 }
 
 // ── 진료과 버튼 렌더 ─────────────────────────────────────────────
@@ -872,61 +835,41 @@ function rl() {
     const c = SC[h.an.st], g = GR[h.an.gr], x = eid===h.id, hl = hid===h.id;
     let dt = '';
     if (x) {
+      const posS = (h.an.samples||[]).filter(s=>s.s!=='neg');
+      const negS = (h.an.samples||[]).filter(s=>s.s==='neg');
       dt = `
         <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
           <div style="flex:1;min-width:70px;padding:10px;border-radius:12px;background:#fbf9f8;text-align:center;">
-            <div style="font-size:9.5px;color:#7e7577;font-family:'Plus Jakarta Sans',sans-serif;margin-bottom:2px;">아쉬움 언급</div>
-            <div style="font-size:24px;font-weight:800;color:${h.an.nc>0?'#ba1a1a':'#516161'};font-family:'Plus Jakarta Sans',sans-serif;">${h.an.nc}개</div>
+            <div style="font-size:9.5px;color:#7e7577;font-family:'Plus Jakarta Sans',sans-serif;margin-bottom:2px;">👍 추천 후기</div>
+            <div style="font-size:24px;font-weight:800;color:#0F6E56;font-family:'Plus Jakarta Sans',sans-serif;">${h.an.pc}건</div>
           </div>
           <div style="flex:1;min-width:70px;padding:10px;border-radius:12px;background:#fbf9f8;text-align:center;">
-            <div style="font-size:9.5px;color:#7e7577;font-family:'Plus Jakarta Sans',sans-serif;margin-bottom:2px;">추천 언급</div>
-            <div style="font-size:24px;font-weight:800;color:#526069;font-family:'Plus Jakarta Sans',sans-serif;">${h.an.pc}개</div>
+            <div style="font-size:9.5px;color:#7e7577;font-family:'Plus Jakarta Sans',sans-serif;margin-bottom:2px;">⚠️ 아쉬움 후기</div>
+            <div style="font-size:24px;font-weight:800;color:${h.an.nc>0?'#ba1a1a':'#516161'};font-family:'Plus Jakarta Sans',sans-serif;">${h.an.nc}건</div>
+          </div>
+          <div style="flex:1;min-width:70px;padding:10px;border-radius:12px;background:#fbf9f8;text-align:center;">
+            <div style="font-size:9.5px;color:#7e7577;font-family:'Plus Jakarta Sans',sans-serif;margin-bottom:2px;">전체 언급</div>
+            <div style="font-size:24px;font-weight:800;color:#526069;font-family:'Plus Jakarta Sans',sans-serif;">${h.an.total}건</div>
           </div>
         </div>
-        
-        <div style="background:#f5f3f3;border-radius:12px;padding:12px;margin-bottom:12px;">
-          <div style="font-size:12px;font-weight:600;color:#4d4547;margin-bottom:10px;font-family:'Plus Jakarta Sans',sans-serif;">📊 과잉진료 예방 지표</div>
-          <div style="display:flex;flex-direction:column;gap:8px;">
-            <div style="background:#fff;border-radius:10px;padding:10px 12px;border-left:3px solid #516161;">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-                <span style="font-size:11px;color:#4d4547;font-family:'Plus Jakarta Sans',sans-serif;">🦷 자연치아 보존 전문성</span>
-                <span style="font-size:14px;font-weight:700;color:#516161;font-family:'Plus Jakarta Sans',sans-serif;">${h.an.opi.cons}점</span>
-              </div>
-              <div style="height:4px;background:#efeded;border-radius:2px;overflow:hidden;"><div style="height:100%;width:${h.an.opi.cons}%;background:linear-gradient(90deg,#516161,#4ECDC4);border-radius:2px;transition:width .5s;"></div></div>
-            </div>
-            <div style="background:#fff;border-radius:10px;padding:10px 12px;border-left:3px solid #F59E0B;">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-                <span style="font-size:11px;color:#4d4547;font-family:'Plus Jakarta Sans',sans-serif;">⏳ 운영 안정성 (장기 개업)</span>
-                <span style="font-size:14px;font-weight:700;color:#F59E0B;font-family:'Plus Jakarta Sans',sans-serif;">${h.an.opi.stab}점</span>
-              </div>
-              <div style="height:4px;background:#efeded;border-radius:2px;overflow:hidden;"><div style="height:100%;width:${h.an.opi.stab}%;background:linear-gradient(90deg,#F59E0B,#FBBF24);border-radius:2px;transition:width .5s;"></div></div>
-            </div>
-            <div style="background:#fff;border-radius:10px;padding:10px 12px;border-left:3px solid #0EA5E9;">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-                <span style="font-size:11px;color:#4d4547;font-family:'Plus Jakarta Sans',sans-serif;">👤 원장 직접 1인 진료</span>
-                <span style="font-size:14px;font-weight:700;color:#0EA5E9;font-family:'Plus Jakarta Sans',sans-serif;">${h.an.opi.solo}점</span>
-              </div>
-              <div style="height:4px;background:#efeded;border-radius:2px;overflow:hidden;"><div style="height:100%;width:${h.an.opi.solo}%;background:linear-gradient(90deg,#0EA5E9,#38BDF8);border-radius:2px;transition:width .5s;"></div></div>
-            </div>
-          </div>
-        </div>
-        <a href="https://m.search.naver.com/search.naver?query=${encodeURIComponent(h.name+' 리뷰 과잉진료')}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:block;text-align:center;padding:10px;border-radius:12px;background:linear-gradient(135deg,rgba(3,199,90,0.08),rgba(3,199,90,0.03));border:1.5px solid rgba(3,199,90,0.25);color:#03C75A;font-size:12px;font-weight:700;text-decoration:none;margin-bottom:12px;font-family:'Plus Jakarta Sans',sans-serif;">🔍 네이버에서 '${esc(h.name)} 과잉진료' 리뷰 직접 확인 →</a>
-        
-        <div style="background:#fbf9f8;border-radius:12px;padding:10px;margin-bottom:12px;border-left:4px solid ${g.bd};">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-            <div style="font-weight:600;color:${g.tx};font-size:14px;font-family:'Plus Jakarta Sans',sans-serif;">${g.e} ${g.l} ${g.desc}</div>
-            <div style="font-size:11px;background:${g.bg};color:${g.tx};padding:2px 6px;border-radius:4px;font-weight:600;font-family:'Plus Jakarta Sans',sans-serif;">분석: ${h.an.mtd}</div>
-          </div>
-        </div>
-        
-        ${h.desc?`<div style="padding:10px 12px;border-radius:12px;background:#f5f3f3;font-size:11.5px;color:#4d4547;line-height:1.6;margin-bottom:8px;">📄 ${esc(h.desc)}</div>`:''}
-        ${h.an.dt.length ? h.an.dt.map(d=>{
-          let prefix = '';
-          if (d.type === 'pos') prefix = '👍 평판 추천';
-          else if (d.type === 'neg') prefix = '⚠️ 평판 아쉬움';
-          else if (d.type === 'feat') prefix = '📢 진료/서비스 특징';
-          return `<div class="detail-box ${d.type}"><strong>${prefix}</strong>  ${d.keywords.join(", ")}</div>`;
-        }).join("") : '<div style="text-align:center;padding:8px;font-size:12px;color:#7e7577;">특이 키워드 없음</div>'}
+
+        <div style="font-size:10.5px;color:#7e7577;line-height:1.5;margin-bottom:10px;">📊 출처: 네이버 블로그·카페·지식인 실제 글 기준 (병원명+평가 키워드 자동 집계 · 오분류 가능). 직접 확인 권장.</div>
+
+        ${posS.length ? `<div style="background:#f0f8f4;border-radius:12px;padding:10px 12px;margin-bottom:8px;">
+          <div style="font-size:11px;font-weight:700;color:#0F6E56;margin-bottom:6px;font-family:'Plus Jakarta Sans',sans-serif;">👍 실제 추천 후기</div>
+          ${posS.map(s=>`<a href="${s.l}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:block;font-size:11.5px;color:#0e3a2c;text-decoration:none;line-height:1.5;margin-bottom:5px;border-bottom:1px dashed #cfe6da;padding-bottom:4px;">· ${esc(s.t)} <span style="color:#7aa394;">[${s.src}] ↗</span></a>`).join("")}
+        </div>` : ''}
+        ${negS.length ? `<div style="background:#fdf0ee;border-radius:12px;padding:10px 12px;margin-bottom:8px;">
+          <div style="font-size:11px;font-weight:700;color:#ba1a1a;margin-bottom:6px;font-family:'Plus Jakarta Sans',sans-serif;">⚠️ 아쉬움 언급</div>
+          ${negS.map(s=>`<a href="${s.l}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:block;font-size:11.5px;color:#6b1414;text-decoration:none;line-height:1.5;margin-bottom:5px;border-bottom:1px dashed #f0d4cf;padding-bottom:4px;">· ${esc(s.t)} <span style="color:#c08a84;">[${s.src}] ↗</span></a>`).join("")}
+        </div>` : ''}
+        ${(!posS.length && !negS.length) ? '<div style="text-align:center;padding:10px;font-size:12px;color:#7e7577;">표시할 실제 후기 글이 없습니다.</div>' : ''}
+
+        ${h.an.doctorCnt!=null ? `<div style="background:#eef4f6;border-radius:10px;padding:9px 12px;margin-bottom:8px;font-size:11.5px;color:#3f5560;font-family:'Plus Jakarta Sans',sans-serif;">🏥 심평원 등록 의사 ${h.an.doctorCnt}명 ${h.an.doctorCnt===1?'(1인 진료)':''} <span style="color:#90a4ac;">· 공공데이터 실측</span></div>` : ''}
+        ${h.an.feat && h.an.feat.length ? `<div class="detail-box feat"><strong>📢 진료/서비스 특징</strong>  ${h.an.feat.join(", ")} <span style="color:#9a9a9a;font-size:10px;">(병원명 기준)</span></div>` : ''}
+
+        <a href="https://m.search.naver.com/search.naver?query=${encodeURIComponent(h.name+' 후기')}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:block;text-align:center;padding:10px;border-radius:12px;background:rgba(3,199,90,0.06);border:1.5px solid rgba(3,199,90,0.25);color:#03C75A;font-size:12px;font-weight:700;text-decoration:none;margin:8px 0 4px;font-family:'Plus Jakarta Sans',sans-serif;">🔍 네이버에서 '${esc(h.name)} 후기' 직접 확인 →</a>
+
         <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
           ${h.phone?`<div style="padding:8px 12px;border-radius:10px;background:#e8f5ff;font-size:11.5px;color:#526069;font-family:'Plus Jakarta Sans',sans-serif;font-weight:600;">📞 ${esc(h.phone)}</div>`:''}
         </div>`;
@@ -1005,45 +948,47 @@ async function doSearch() {
     btn.disabled=false; usb(); return;
   }
 
-  // [상대평가 로직] 1차 정렬: OPI 점수 순 (내림차순)
-  hs.sort((a, b) => b.an.s - a.an.s);
+  // 후기 조회 대상은 가까운 순 상위 25곳으로 제한 (API 호출량 관리)
+  hs.sort((a,b)=>a.dist-b.dist);
+  if (hs.length > 25) hs = hs.slice(0, 25);
 
-  // 등급별 커트라인 계산 (S: 상위 5~20% 랜덤, A: 상위 50%까지, B: 상위 90%까지)
-  const total = hs.length;
-  // 검색 결과의 첫 번째 병원 이름 hash를 시드로 사용하여 일관성 유지 + 자연스러운 변동
-  const seedStr = hs.length > 0 ? (hs[0].name + hs.length) : "default";
-  const sPctSeed = getHash(seedStr) % 16; // 0~15
-  const sPct = 0.05 + (sPctSeed / 15) * 0.15; // 0.05 ~ 0.20 (5% ~ 20%)
-  const s_limit = Math.max(1, Math.ceil(total * sPct));
-  const a_limit = Math.max(s_limit, Math.ceil(total * 0.50));
-  const b_limit = Math.max(a_limit, Math.ceil(total * 0.90));
+  // [실제 후기 집계] 각 병원의 네이버 블로그·카페·지식인 실제 언급을 병렬 조회
+  document.getElementById("la").style.display = "block";
+  document.getElementById("ltt").textContent = `실제 후기 분석 중... (${hs.length}곳)`;
+  await Promise.all(hs.map(async h => {
+    const m = await fetchMentions(h.name);
+    h.an.pc = m.pos || 0;
+    h.an.nc = m.neg || 0;
+    h.an.total = m.matched || 0;
+    h.an.samples = m.samples || [];
+    h.an.loaded = true;
+    gradeFromMentions(h.an);
+  }));
+  document.getElementById("la").style.display = "none";
 
-  // 등급 강제 할당
-  hs.forEach((h, i) => {
-    if (i < s_limit) { h.an.st = "trusted"; h.an.gr = "S"; }
-    else if (i < a_limit) { h.an.st = "clean"; h.an.gr = "A"; }
-    else if (i < b_limit) { h.an.st = "caution"; h.an.gr = "B"; }
-    else { h.an.st = "warning"; h.an.gr = "D"; }
-  });
-
-  // 사용자 뷰용 필터링 (우수/양호/참고 등급 지도 및 목록에 표시, 신중 등급만 제외)
+  // 긍정 후기가 실증된 병원만 '착한병원'으로 노출 (근거 없으면 표시 안 함)
+  // 부정 우세(warning)·후기 없음(unknown)은 별도 집계 후 기본 목록에서 제외
+  const noData = hs.filter(h => h.an.st === "unknown").length;
   hs = hs.filter(h => h.an.st === "trusted" || h.an.st === "clean" || h.an.st === "caution");
 
-  const od = {trusted:0,clean:1,caution:2,warning:3,unknown:4};
-  const gr_od = {S:0,A:1,B:2,D:3};
+  const gr_od = {S:0,A:1,B:2};
   hs.sort((a,b)=>{
-    // 1차: 등급 순 (S → A → B → D)
+    // 1차: 등급(우수→양호→참고)
     if (gr_od[a.an.gr]!==gr_od[b.an.gr]) return gr_od[a.an.gr]-gr_od[b.an.gr];
-    // 2차: 같은 등급 내에서 점수 (높은 순)
-    if (a.an.s!==b.an.s) return (b.an.s||0)-(a.an.s||0);
-    // 3차: 거리 (가까운 순)
+    // 2차: 실제 순(긍정−부정) 언급 수 많은 순
+    if (a.an.s!==b.an.s) return b.an.s - a.an.s;
+    // 3차: 거리(가까운 순)
     return a.dist-b.dist;
   });
 
   document.getElementById("ra").style.display = "block";
   const safe = hs.filter(h=>h.an.st==="trusted"||h.an.st==="clean").length;
   const caution = hs.filter(h=>h.an.st==="caution").length;
-  document.getElementById("rs").textContent = `✅ ${hs.length}개 ${sp.l} 발견 (우수/양호 ${safe}곳, 참고 ${caution}곳)`;
+  if (hs.length === 0) {
+    document.getElementById("rs").textContent = `🔍 ${sp.l}: 실제 긍정 후기가 확인된 병원이 없습니다 (검토 ${noData}곳, 후기 데이터 없음)`;
+  } else {
+    document.getElementById("rs").textContent = `✅ 실제 후기 기준 ${hs.length}곳 (우수/양호 ${safe}, 참고 ${caution}) · 후기없음 ${noData}곳 제외`;
+  }
 
   btn.disabled=false; cf="all";
   cv="list";
