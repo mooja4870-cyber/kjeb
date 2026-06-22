@@ -376,6 +376,16 @@ tailwind.config = {
     <!-- 병원 목록 -->
     <div id="hl" style="padding:0 16px;display:flex;flex-direction:column;gap:10px;"></div>
 
+    <!-- 착한병원 제보 진입 -->
+    <div style="margin:14px 16px 0;padding:12px;border:1px dashed #d1c3c6;border-radius:14px;background:#fff8fa;display:flex;align-items:center;gap:10px;">
+      <span style="font-size:20px;">👍</span>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:700;color:#1b1c1c;font-family:'Plus Jakarta Sans',sans-serif;">내가 아는 착한병원 제보하기</div>
+        <div style="font-size:11px;color:#7e7577;line-height:1.5;">과잉진료 없는 좋은 병원을 직접 등록하면, 데이터가 쌓일수록 정확해져요.</div>
+      </div>
+      <button onclick="openReco()" style="background:#03C75A;color:#fff;border:none;border-radius:9999px;padding:8px 15px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;white-space:nowrap;">등록</button>
+    </div>
+
     <!-- 면책 -->
     <div style="margin:16px 16px 0;padding:14px;border-radius:16px;background:#fff0f3;border:1px solid #eddfe2;font-size:10.5px;color:#776c6f;line-height:1.7;font-family:'Plus Jakarta Sans',sans-serif;">
       <p style="font-weight:700;margin-bottom:6px;color:#ba1a1a;">⚠️ 이용 안내 및 법적 면책 고지</p>
@@ -430,6 +440,43 @@ tailwind.config = {
       <button id="lcb" onclick="cfl()" disabled style="flex:2;padding:13px;border-radius:14px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;background:#665c5e;border:none;color:#fff;opacity:.5;">
         선택 완료
       </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 착한병원 제보 모달 ══ -->
+<div class="modal-overlay" id="rm">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:18px;font-weight:800;color:#1b1c1c;">👍 착한병원 제보</h2>
+      <button onclick="closeReco()" style="background:none;border:none;font-size:22px;color:#7e7577;cursor:pointer;line-height:1;">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:13px;">
+        <label style="font-size:11.5px;color:#7e7577;display:block;margin-bottom:5px;font-family:'Plus Jakarta Sans',sans-serif;">병원 이름 <span style="color:#e2536f;">*</span></label>
+        <input type="text" id="ri_name" placeholder="예) 사과나무치과병원" style="width:100%;padding:10px 12px;border:1.5px solid #d0c3c6;border-radius:12px;font-size:13px;outline:none;font-family:'Plus Jakarta Sans',sans-serif;">
+      </div>
+      <div style="margin-bottom:13px;">
+        <label style="font-size:11.5px;color:#7e7577;display:block;margin-bottom:5px;font-family:'Plus Jakarta Sans',sans-serif;">지역 (시/구/동) <span style="color:#e2536f;">*</span></label>
+        <input type="text" id="ri_region" placeholder="예) 고양시 일산서구 주엽동" style="width:100%;padding:10px 12px;border:1.5px solid #d0c3c6;border-radius:12px;font-size:13px;outline:none;font-family:'Plus Jakarta Sans',sans-serif;">
+      </div>
+      <div style="margin-bottom:13px;">
+        <label style="font-size:11.5px;color:#7e7577;display:block;margin-bottom:5px;font-family:'Plus Jakarta Sans',sans-serif;">진료과</label>
+        <input type="text" id="ri_spec" placeholder="예) 치과" style="width:100%;padding:10px 12px;border:1.5px solid #d0c3c6;border-radius:12px;font-size:13px;outline:none;font-family:'Plus Jakarta Sans',sans-serif;">
+      </div>
+      <div style="margin-bottom:13px;">
+        <label style="font-size:11.5px;color:#7e7577;display:block;margin-bottom:6px;font-family:'Plus Jakarta Sans',sans-serif;">추천 이유 <span style="color:#e2536f;">*</span> <span style="color:#b0a8aa;">(복수 선택)</span></label>
+        <div id="ri_chips" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+      </div>
+      <div style="margin-bottom:6px;">
+        <label style="font-size:11.5px;color:#7e7577;display:block;margin-bottom:5px;font-family:'Plus Jakarta Sans',sans-serif;">한마디 더 (선택)</label>
+        <textarea id="ri_comment" rows="2" placeholder="직접 겪은 경험을 자유롭게 적어주세요 (선택)" style="width:100%;padding:10px 12px;border:1.5px solid #d0c3c6;border-radius:12px;font-size:12.5px;outline:none;resize:none;font-family:'Plus Jakarta Sans',sans-serif;"></textarea>
+      </div>
+      <div style="background:#fff8e8;border:1px solid #f0e2c0;border-radius:10px;padding:9px 11px;font-size:10.5px;color:#876d2e;line-height:1.5;">⚠️ 실제 경험만 정직하게 적어주세요. 허위·광고성 제보는 제한될 수 있습니다.</div>
+      <div id="ri_msg" style="display:none;margin-top:10px;font-size:12px;font-weight:600;text-align:center;font-family:'Plus Jakarta Sans',sans-serif;"></div>
+    </div>
+    <div class="modal-footer">
+      <button id="ri_submit" onclick="submitReco()" style="flex:1;padding:13px;border-radius:14px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;background:#03C75A;border:none;color:#fff;">제보 등록하기</button>
     </div>
   </div>
 </div>
@@ -680,6 +727,73 @@ function gradeFromMentions(an) {
   else                            { an.st = "caution"; an.gr = "B"; }
 }
 
+// ── 착한병원 제보 ─────────────────────────────────────────────────
+const RECO_REASONS = ["💰 과잉진료 안 해요","🦷 자연치아 살려줘요","😊 친절해요","🙅 불필요한 치료 권유 안 해요","🗣️ 설명이 자세해요","💵 진료비가 합리적이에요","📋 비용이 투명해요","😌 안 아프게 잘해요","👨‍⚕️ 원장님 직접 진료","🔁 믿고 재방문해요","⏱️ 예약 잘 지켜요","✨ 시설이 깨끗해요"];
+let recoSel = new Set();
+
+function renderRecoChips() {
+  document.getElementById("ri_chips").innerHTML = RECO_REASONS.map(r => {
+    const on = recoSel.has(r);
+    return `<span onclick="toggleReason('${r}')" style="font-size:12px;cursor:pointer;padding:6px 11px;border-radius:9999px;font-family:'Plus Jakarta Sans',sans-serif;${on?'background:#03C75A;color:#fff;border:1px solid #03C75A;':'background:#fff;color:#665c5e;border:1px solid #d8cfd1;'}">${r}${on?' ✓':''}</span>`;
+  }).join("");
+}
+function toggleReason(r) { recoSel.has(r) ? recoSel.delete(r) : recoSel.add(r); renderRecoChips(); }
+
+function openReco() {
+  recoSel = new Set();
+  document.getElementById("ri_name").value = "";
+  document.getElementById("ri_region").value = (typeof lF === "string" && lF !== "내 위치") ? lF : "";
+  document.getElementById("ri_spec").value = (SP.find(s=>s.id===ss)||{}).l || "";
+  document.getElementById("ri_comment").value = "";
+  const msg = document.getElementById("ri_msg"); msg.style.display = "none";
+  const btn = document.getElementById("ri_submit"); btn.disabled = false; btn.textContent = "제보 등록하기";
+  renderRecoChips();
+  document.getElementById("rm").classList.add("open");
+}
+function closeReco() { document.getElementById("rm").classList.remove("open"); }
+
+async function submitReco() {
+  const name = document.getElementById("ri_name").value.trim();
+  const region = document.getElementById("ri_region").value.trim();
+  const spec = document.getElementById("ri_spec").value.trim();
+  const comment = document.getElementById("ri_comment").value.trim();
+  const msg = document.getElementById("ri_msg");
+  const show = (t, ok) => { msg.style.display = "block"; msg.textContent = t; msg.style.color = ok ? "#0F6E56" : "#ba1a1a"; };
+  if (!name) return show("병원 이름을 입력해주세요.", false);
+  if (!region) return show("지역을 입력해주세요.", false);
+  if (recoSel.size === 0) return show("추천 이유를 1개 이상 선택해주세요.", false);
+  const btn = document.getElementById("ri_submit"); btn.disabled = true; btn.textContent = "등록 중...";
+  try {
+    const r = await fetch(`${API}/recommend`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, region, specialty: spec, reasons: [...recoSel], comment })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      show("✅ 제보 감사합니다! 소중한 데이터로 쌓였어요.", true);
+      setTimeout(closeReco, 1400);
+    } else {
+      show(d.error || "등록에 실패했습니다.", false);
+      btn.disabled = false; btn.textContent = "제보 등록하기";
+    }
+  } catch (e) {
+    show("서버 연결에 실패했습니다.", false);
+    btn.disabled = false; btn.textContent = "제보 등록하기";
+  }
+}
+
+// 검색 지역의 사용자 제보 목록 조회 → 병원명 기준 매핑
+function normName(s) { return (s || "").replace(/\s+/g, "").toLowerCase(); }
+async function fetchRecos() {
+  try {
+    const r = await fetch(`${API}/recommendations`);
+    const d = await r.json();
+    const map = {};
+    (d.items || []).forEach(it => { map[normName(it.name)] = it; });
+    return map;
+  } catch (e) { return {}; }
+}
+
 // ── 진료과 버튼 렌더 ─────────────────────────────────────────────
 function rsg() {
   const g = document.getElementById("sg");
@@ -865,6 +979,11 @@ function rl() {
         </div>` : ''}
         ${(!posS.length && !negS.length) ? '<div style="text-align:center;padding:10px;font-size:12px;color:#7e7577;">표시할 실제 후기 글이 없습니다.</div>' : ''}
 
+        ${h.an.userCount>0 ? `<div style="background:#fff0f3;border-radius:12px;padding:10px 12px;margin-bottom:8px;">
+          <div style="font-size:11px;font-weight:700;color:#7a3b50;margin-bottom:6px;font-family:'Plus Jakarta Sans',sans-serif;">👥 사용자 제보 추천 이유 (${h.an.userCount}명)</div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px;">${Object.entries(h.an.userReasons||{}).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<span style="font-size:11px;background:#fff;border:1px solid #e3aebf;color:#7a3b50;padding:3px 9px;border-radius:9999px;">${esc(k)} ${v}</span>`).join("")}</div>
+          ${(h.an.userComments||[]).slice(0,2).map(c=>`<div style="font-size:11px;color:#6b4654;margin-top:6px;line-height:1.5;">“${esc(c)}”</div>`).join("")}
+        </div>` : ''}
         ${h.an.doctorCnt!=null ? `<div style="background:#eef4f6;border-radius:10px;padding:9px 12px;margin-bottom:8px;font-size:11.5px;color:#3f5560;font-family:'Plus Jakarta Sans',sans-serif;">🏥 심평원 등록 의사 ${h.an.doctorCnt}명 ${h.an.doctorCnt===1?'(1인 진료)':''} <span style="color:#90a4ac;">· 공공데이터 실측</span></div>` : ''}
         ${h.an.feat && h.an.feat.length ? `<div class="detail-box feat"><strong>📢 진료/서비스 특징</strong>  ${h.an.feat.join(", ")} <span style="color:#9a9a9a;font-size:10px;">(병원명 기준)</span></div>` : ''}
 
@@ -887,6 +1006,7 @@ function rl() {
             <span class="status-badge" style="background:${g.bg};border-color:${g.bd};color:${g.tx};">
               ${g.e} ${g.l}
             </span>
+            ${h.an.userCount>0?`<span style="font-size:11px;background:#fff0f3;color:#7a3b50;border:1px solid #e3aebf;padding:2px 8px;border-radius:6px;font-family:'Plus Jakarta Sans',sans-serif;">👥 사용자 추천 ${h.an.userCount}</span>`:''}
             ${h.cat?`<span style="font-size:11px;color:#7e7577;font-family:'Plus Jakarta Sans',sans-serif;">${esc(h.cat)}</span>`:''}
           </div>
         </div>
@@ -955,6 +1075,7 @@ async function doSearch() {
   // [실제 후기 집계] 각 병원의 네이버 블로그·카페·지식인 실제 언급을 병렬 조회
   document.getElementById("la").style.display = "block";
   document.getElementById("ltt").textContent = `실제 후기 분석 중... (${hs.length}곳)`;
+  const recos = await fetchRecos();
   await Promise.all(hs.map(async h => {
     const m = await fetchMentions(h.name);
     h.an.pc = m.pos || 0;
@@ -963,6 +1084,14 @@ async function doSearch() {
     h.an.samples = m.samples || [];
     h.an.loaded = true;
     gradeFromMentions(h.an);
+    const ur = recos[normName(h.name)];
+    if (ur) {
+      h.an.userCount = ur.count;
+      h.an.userReasons = ur.reasons || {};
+      h.an.userComments = ur.comments || [];
+      h.an.s += ur.count; // 사용자 제보도 긍정 근거로 정렬 가산
+      if (h.an.st === "unknown") { h.an.st = "clean"; h.an.gr = "A"; } // 후기 없어도 사용자 추천이면 노출
+    } else { h.an.userCount = 0; }
   }));
   document.getElementById("la").style.display = "none";
 
