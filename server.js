@@ -236,6 +236,35 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // 좌표 → 지역명 역지오코딩 (Nominatim/OSM, 키 불필요)
+  if (parsed.pathname === "/revgeo") {
+    const lat = parseFloat(parsed.query.lat), lng = parseFloat(parsed.query.lng);
+    const sendJson = obj => { res.writeHead(obj.error ? 400 : 200, { "Content-Type": "application/json; charset=utf-8" }); res.end(JSON.stringify(obj)); };
+    if (isNaN(lat) || isNaN(lng)) return sendJson({ error: "lat/lng required" });
+    const u = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ko&zoom=18`;
+    https.get(u, { headers: { "User-Agent": "kjeb-hospital-finder/1.0 (good-clinic-finder)" } }, r => {
+      let d = "";
+      r.on("data", c => d += c);
+      r.on("end", () => {
+        try {
+          const a = (JSON.parse(d).address) || {};
+          const province = a.province || a.state || "";                       // 경기도/서울특별시
+          const city = a.city || a.county || a.town || "";                    // 고양시
+          const gu = a.borough || a.city_district || a.district || "";        // 일산서구
+          const dong = a.suburb || a.quarter || a.neighbourhood || a.village || ""; // 주엽2동
+          // 검색용: 광역도 제외, 시·구·동만 (동 끝 숫자 제거: 주엽2동 → 주엽동)
+          const dongClean = dong.replace(/\d+동$/, m => m.replace(/\d+/, "")).replace(/\s/g, "");
+          const parts = [city, gu, dongClean].filter(Boolean);
+          const name = dongClean || gu || city || "내 위치";
+          sendJson({ ok: true, name, full: parts.join(" "), province, city, gu, dong: dongClean });
+        } catch (e) {
+          sendJson({ error: "geocode failed" });
+        }
+      });
+    }).on("error", () => sendJson({ error: "geocode failed" }));
+    return;
+  }
+
   // 정적 파일 서빙 (html, js, css)
   let filePath;
   if (parsed.pathname === "/" || parsed.pathname === "/index.html") {

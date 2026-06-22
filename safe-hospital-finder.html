@@ -434,7 +434,7 @@ tailwind.config = {
       </div>
     </div>
     <div class="modal-footer">
-      <button class="bgps" onclick="gps()" style="flex:1;padding:13px;border-radius:14px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;background:#fff;border:1.5px solid #665c5e;color:#665c5e;">
+      <button class="bgps" onclick="clm();gps()" style="flex:1;padding:13px;border-radius:14px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;background:#fff;border:1.5px solid #665c5e;color:#665c5e;">
         📡 GPS
       </button>
       <button id="lcb" onclick="cfl()" disabled style="flex:2;padding:13px;border-radius:14px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;background:#665c5e;border:none;color:#fff;opacity:.5;">
@@ -1279,40 +1279,61 @@ function cfl() {
   document.getElementById("ln").textContent = lN;
   clm(); usb();
 }
-function gps() {
-  if (!navigator.geolocation) return;
-  const btn = document.querySelector(".bgps");
-  if(btn) { btn.textContent = "⌛ GPS..."; btn.disabled = true; }
-  navigator.geolocation.getCurrentPosition(p=>{
-    uLat=p.coords.latitude; uLng=p.coords.longitude;
-    if (window.kakao && kakao.maps && kakao.maps.services) {
-      const geocoder = new kakao.maps.services.Geocoder();
-      geocoder.coord2RegionCode(uLng, uLat, (result, status) => {
-        if (status === kakao.maps.services.Status.OK) {
-          // 행정동 단위 주소 추출
-          let addr = result.find(r => r.region_type === 'H') || result[0];
-          lN = addr.region_3depth_name || addr.address_name;
-          lF = addr.address_name; // 전체 주소명 (예: 경기도 고양시 일산서구 주엽동)
-          document.getElementById("ln").textContent = lN;
-          if(btn) { btn.textContent = "📡 GPS"; btn.disabled = false; }
-          clm(); usb();
-        }
-      });
-    } else {
-      lN="내위치(GPS)"; lF="내 위치";
-      document.getElementById("ln").textContent = lN;
-      if(btn) { btn.textContent = "📡 GPS"; btn.disabled = false; }
-      clm(); usb();
+// 헤더 GPS 버튼 라벨/상태 갱신
+function setGpsLabel(txt) { const e = document.getElementById("ln"); if (e) e.textContent = txt; }
+
+// 좌표 → 지역명 변환 (서버 /revgeo, 카카오 폴백) 후 자동 검색
+async function resolveAndSearch(silentNoSearch) {
+  try {
+    const r = await fetch(`${API}/revgeo?lat=${uLat}&lng=${uLng}`);
+    const d = await r.json();
+    if (d && d.ok && d.full) {
+      lN = d.name || "내 위치";
+      lF = d.full;
+      setGpsLabel(lN);
+      if (!silentNoSearch) doSearch();
+      return true;
     }
-  }, ()=>{
-    if(btn) { btn.textContent = "📡 GPS"; btn.disabled = false; }
-  }, {enableHighAccuracy:true,timeout:8000});
+  } catch (e) {}
+  // 폴백: 카카오 services가 로드돼 있으면 사용
+  if (window.kakao && kakao.maps && kakao.maps.services) {
+    return await new Promise(res => {
+      const gc = new kakao.maps.services.Geocoder();
+      gc.coord2RegionCode(uLng, uLat, (result, status) => {
+        if (status === kakao.maps.services.Status.OK && result && result.length) {
+          const addr = result.find(x => x.region_type === 'H') || result[0];
+          lN = addr.region_3depth_name || addr.address_name;
+          lF = addr.address_name;
+          setGpsLabel(lN);
+          if (!silentNoSearch) doSearch();
+          res(true);
+        } else res(false);
+      });
+    });
+  }
+  return false;
+}
+
+function gps(silentNoSearch) {
+  if (!navigator.geolocation) { alert("이 브라우저는 위치 기능을 지원하지 않습니다."); return; }
+  setGpsLabel("⌛ 위치 확인…");
+  navigator.geolocation.getCurrentPosition(async p => {
+    uLat = p.coords.latitude; uLng = p.coords.longitude;
+    const ok = await resolveAndSearch(silentNoSearch);
+    if (!ok) { setGpsLabel("내위치(GPS)"); alert("현재 위치의 지역명을 확인하지 못했습니다. 잠시 후 다시 시도하거나 '다른 위치'로 선택해주세요."); }
+  }, err => {
+    setGpsLabel("내위치(GPS)");
+    if (!silentNoSearch) {
+      if (err.code === 1) alert("위치 권한이 차단되어 있습니다. 브라우저 주소창의 위치 권한을 허용으로 변경해주세요.");
+      else alert("현재 위치를 가져오지 못했습니다. (시간 초과 또는 신호 약함) 다시 시도해주세요.");
+    }
+  }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
 }
 
 // ── 초기화 ────────────────────────────────────────────────────────
 rsg(); usb();
-// 앱 실행 시 자동으로 내 위치(GPS) 권한을 요청하여 현재 위치를 반영
-setTimeout(() => gps(), 300);
+// 앱 실행 시 자동으로 내 위치(GPS)만 조용히 반영 (검색·알림 없음)
+setTimeout(() => gps(true), 300);
 </script>
 </body>
 </html>
