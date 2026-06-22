@@ -25,6 +25,8 @@ db.run(`CREATE TABLE IF NOT EXISTS user_recos (
 // 실제 후기 감성 키워드 (사람들이 실제로 남기는 표현 기반)
 const POS_KW = ["착한","양심","과잉진료 없","과잉진료없","과잉 없","바가지 없","덤터기 없","강요 없","강요 안","강요하지 않","친절","꼼꼼","세심","자연치아","보존치료","살려주","안 아프게","안아프게","정직","믿고","믿을 만","재방문","단골","추천","만족","최고","좋았","좋아요","good"];
 const NEG_KW = ["과잉진료","과잉 진료","바가지","덤터기","강요","불친절","사기","돈만","불필요한 치료","과다청구","불만","최악","후회","다신 안","두 번 다시","비추","호구","뜯","폭리"];
+// 광고/협찬 식별 (집계에서 제외) — 체험단·협찬·원고료 등
+const AD_KW = ["체험단","협찬","소정의 원고료","원고료","유료광고","제공받아","제공 받아","제공받았","무상으로 제공","대가성","경제적 대가","서포터즈","앰배서더","앰버서더","기자단","파트너스","쿠팡","애드","광고 포함","유료 광고"];
 
 function stripTag(s) { return (s || "").replace(/<[^>]*>/g, ""); }
 // '과잉진료 없어요' 같은 긍정 부정문이 부정으로 오집계되지 않도록 제거
@@ -212,8 +214,9 @@ const server = http.createServer((req, res) => {
           ...cafe.map(i => ({ ...i, src: "카페" })),
           ...kin.map(i => ({ ...i, src: "지식인" })),
         ];
-        let pos = 0, neg = 0, matched = 0;
+        let pos = 0, neg = 0, matched = 0, adCount = 0;
         const samples = [];
+        const adSamples = [];
         all.forEach(it => {
           const title = stripTag(it.title);
           const desc = stripTag(it.description);
@@ -221,6 +224,14 @@ const server = http.createServer((req, res) => {
           // 해당 병원을 실제로 언급한 글만 집계 (정직성: 이름 미포함 글 제외)
           if (!text.includes(name)) return;
           matched++;
+          // 광고/협찬 문구 또는 정형화된 체험단 템플릿 제목 → 광고 의심 (집계 제외, 별도 표기)
+          const isAdText = AD_KW.some(k => text.includes(k));
+          const isTemplated = title.includes("에서 경험한") || /에서의\s.{0,12}(경험|치료\s*후기)/.test(title);
+          if (isAdText || isTemplated) {
+            adCount++;
+            adSamples.push({ t: title, l: it.link, src: it.src, s: "ad", reason: isAdText ? "광고/협찬 문구" : "정형 패턴(체험단 의심)" });
+            return;
+          }
           const hasPos = POS_KW.some(k => text.includes(k));
           const negText = neutralizePos(text);
           const hasNeg = NEG_KW.some(k => negText.includes(k));
@@ -228,7 +239,7 @@ const server = http.createServer((req, res) => {
           else if (hasNeg && !hasPos) { neg++; samples.push({ t: title, l: it.link, src: it.src, s: "neg" }); }
           else if (hasPos && hasNeg) { pos++; samples.push({ t: title, l: it.link, src: it.src, s: "mixed" }); }
         });
-        const result = JSON.stringify({ name, scanned: all.length, matched, pos, neg, samples: samples.slice(0, 6) });
+        const result = JSON.stringify({ name, scanned: all.length, matched, pos, neg, adCount, samples: samples.slice(0, 6), adSamples: adSamples.slice(0, 4) });
         db.run(`INSERT OR REPLACE INTO mention_cache (name, data, ts) VALUES (?, ?, ?)`, [name, result, Date.now()]);
         sendJson(result);
       });

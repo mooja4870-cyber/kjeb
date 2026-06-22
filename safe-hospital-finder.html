@@ -982,7 +982,7 @@ function rl() {
       dt = `
         <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
           <div style="flex:1;min-width:70px;padding:10px;border-radius:12px;background:#fbf9f8;text-align:center;">
-            <div style="font-size:9.5px;color:#7e7577;font-family:'Plus Jakarta Sans',sans-serif;margin-bottom:2px;">👍 추천 후기</div>
+            <div style="font-size:9.5px;color:#7e7577;font-family:'Plus Jakarta Sans',sans-serif;margin-bottom:2px;">👍 추천 후기${h.an.adCount>0?'*':''}</div>
             <div style="font-size:24px;font-weight:800;color:#0F6E56;font-family:'Plus Jakarta Sans',sans-serif;">${h.an.pc}건</div>
           </div>
           <div style="flex:1;min-width:70px;padding:10px;border-radius:12px;background:#fbf9f8;text-align:center;">
@@ -995,7 +995,7 @@ function rl() {
           </div>
         </div>
 
-        <div style="font-size:10.5px;color:#7e7577;line-height:1.5;margin-bottom:10px;">📊 출처: 네이버 블로그·카페·지식인 실제 글 기준 (병원명+평가 키워드 자동 집계 · 오분류 가능). 직접 확인 권장.</div>
+        <div style="font-size:10.5px;color:#7e7577;line-height:1.5;margin-bottom:10px;">📊 출처: 네이버 블로그·카페·지식인 실제 글 기준 (병원명+평가 키워드 자동 집계 · 오분류 가능). 직접 확인 권장.${h.an.adCount>0?`<br><span style="color:#b07d2e;">* 광고·협찬/체험단 의심 ${h.an.adCount}건은 추천 집계에서 제외했습니다.</span>`:''}</div>
 
         ${posS.length ? `<div style="background:#f0f8f4;border-radius:12px;padding:10px 12px;margin-bottom:8px;">
           <div style="font-size:11px;font-weight:700;color:#0F6E56;margin-bottom:6px;font-family:'Plus Jakarta Sans',sans-serif;">👍 실제 추천 후기</div>
@@ -1006,6 +1006,11 @@ function rl() {
           ${negS.map(s=>`<a href="${s.l}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:block;font-size:11.5px;color:#6b1414;text-decoration:none;line-height:1.5;margin-bottom:5px;border-bottom:1px dashed #f0d4cf;padding-bottom:4px;">· ${esc(s.t)} <span style="color:#c08a84;">[${s.src}] ↗</span></a>`).join("")}
         </div>` : ''}
         ${(!posS.length && !negS.length) ? `<div style="text-align:center;padding:10px;font-size:12px;color:#7e7577;">${h.an.userOnly?'📝 사용자 제보로 등록된 병원입니다. (포털 후기 미수집)':'표시할 실제 후기 글이 없습니다.'}</div>` : ''}
+
+        ${(h.an.adSamples&&h.an.adSamples.length) ? `<div style="background:#fff8e8;border:1px solid #f0e2c0;border-radius:12px;padding:10px 12px;margin-bottom:8px;">
+          <div style="font-size:11px;font-weight:700;color:#876d2e;margin-bottom:6px;font-family:'Plus Jakarta Sans',sans-serif;">🚩 광고·협찬 의심 글 (집계 제외)</div>
+          ${h.an.adSamples.map(s=>`<a href="${s.l}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:block;font-size:11.5px;color:#7a6322;text-decoration:none;line-height:1.5;margin-bottom:5px;border-bottom:1px dashed #ecdcb0;padding-bottom:4px;">· ${esc(s.t)} <span style="color:#ad924f;">[${s.src}·${esc(s.reason||'의심')}] ↗</span></a>`).join("")}
+        </div>` : ''}
 
         ${h.an.userCount>0 ? `<div style="background:#fff0f3;border-radius:12px;padding:10px 12px;margin-bottom:8px;">
           <div style="font-size:11px;font-weight:700;color:#7a3b50;margin-bottom:6px;font-family:'Plus Jakarta Sans',sans-serif;">👥 사용자 제보 추천 이유 (${h.an.userCount}명)</div>
@@ -1109,7 +1114,9 @@ async function doSearch() {
     h.an.pc = m.pos || 0;
     h.an.nc = m.neg || 0;
     h.an.total = m.matched || 0;
+    h.an.adCount = m.adCount || 0;
     h.an.samples = m.samples || [];
+    h.an.adSamples = m.adSamples || [];
     h.an.loaded = true;
     gradeFromMentions(h.an);
     const ur = recos[normName(h.name)];
