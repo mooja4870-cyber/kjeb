@@ -47,4 +47,5 @@
 | v0.11.6 | 2026-06-22 11:00:38 | 착한병원 제보 진입 카드에 녹색 점선 깜빡임 애니메이션(recoBlink 1.2s) 적용 — 가시성 향상 | 57c453a | UI 강조 |
 | v0.11.7 | 2026-06-22 11:00:38 | 랜딩 페이지에 모바일 APK 다운로드 버튼 추가(GitHub raw URL, download 속성) — 히어로 및 하단 플로팅 바에 'APK 다운로드'(주) + '웹으로 바로 검색'(보조) 2버튼 구성, btn-secondary 스타일 추가 | 195be6a | APK 배포 |
 | v0.11.8 | 2026-06-22 11:00:38 | APK 다운로드 링크를 kjeb 저장소(github.com/mooja4870-cyber/kjeb/raw/main/kjeb.apk)로 변경 | 5e27606 | APK 링크 변경 |
-| v0.12.0 | 2026-06-22 16:04:00 | [APK 1단계] PWA화 — manifest.json·서비스워커(sw.js)·아이콘(192/512, 순수 Node PNG 생성기 gen-icons.js) 추가, 두 HTML에 manifest·apple-touch-icon·SW등록 연결, 서버 MIME에 png/webmanifest 추가. TWA(Play 스토어 APK) 전제 충족 | HEAD | PWA/APK 준비 |
+| v0.12.0 | 2026-06-22 16:04:00 | [APK 1단계] PWA화 — manifest.json·서비스워커(sw.js)·아이콘(192/512, 순수 Node PNG 생성기 gen-icons.js) 추가, 두 HTML에 manifest·apple-touch-icon·SW등록 연결, 서버 MIME에 png/webmanifest 추가. TWA(Play 스토어 APK) 전제 충족 | 091ceec | PWA/APK 준비 |
+| v0.12.1 | 2026-06-22 16:36:00 | [APK 2단계] Render 배포 준비 — server.js PORT(process.env.PORT)·Naver 시크릿 환경변수화, node_modules Git 추적 해제(.gitignore, Render가 Linux용 sqlite3 새로 빌드), render.yaml(무료 web service) 추가, package.json engines(node>=18)·main 수정 | HEAD | Render 배포 준비 |

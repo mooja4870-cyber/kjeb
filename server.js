@@ -38,9 +38,11 @@ function neutralizePos(text) {
     .replace(/강요\s*(가|는|도|하지)?\s*(없|않)/g, " ");
 }
 
-const PORT = 4156;
-const NAVER_CLIENT_ID = "PqOwK5a2oVVs6zmEOjWm";
-const NAVER_CLIENT_SECRET = "SjK8rv8Nd7";
+// Render 등 클라우드는 PORT 환경변수를 주입함. 없으면 로컬 기본값 4156.
+const PORT = process.env.PORT || 4156;
+// 시크릿은 환경변수 우선(배포 시 Render에 등록). 미설정 시 로컬 개발용 폴백.
+const NAVER_CLIENT_ID = process.env.NAVER_CLIENT_ID || "PqOwK5a2oVVs6zmEOjWm";
+const NAVER_CLIENT_SECRET = process.env.NAVER_CLIENT_SECRET || "SjK8rv8Nd7";
 
 const MIME = {
   ".html": "text/html; charset=utf-8",

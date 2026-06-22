@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: kjeb
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm install && npm rebuild sqlite3 --build-from-source
+    startCommand: node server.js
+    autoDeploy: true
+    envVars:
+      - key: NAVER_CLIENT_ID
+        sync: false
+      - key: NAVER_CLIENT_SECRET
+        sync: false

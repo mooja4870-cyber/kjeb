@@ -2,10 +2,13 @@
   "name": "kjeb",
   "version": "1.0.0",
   "description": "앞으로 개발 작업을 마치고 새로운 배포본을 만드실 때는 터미널에 아래 명령어만 실행해 주시면 전체 테스트 검증부터 로그 업데이트, 태깅까지 한 번에 완료됩니다.",
-  "main": "regions (1).js",
+  "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
   },
   "repository": {
     "type": "git",
