@@ -457,12 +457,16 @@ tailwind.config = {
         <input type="text" id="ri_name" placeholder="예) 사과나무치과병원" style="width:100%;padding:10px 12px;border:1.5px solid #d0c3c6;border-radius:12px;font-size:13px;outline:none;font-family:'Plus Jakarta Sans',sans-serif;">
       </div>
       <div style="margin-bottom:13px;">
-        <label style="font-size:11.5px;color:#7e7577;display:block;margin-bottom:5px;font-family:'Plus Jakarta Sans',sans-serif;">지역 (시/구/동) <span style="color:#e2536f;">*</span></label>
-        <input type="text" id="ri_region" placeholder="예) 고양시 일산서구 주엽동" style="width:100%;padding:10px 12px;border:1.5px solid #d0c3c6;border-radius:12px;font-size:13px;outline:none;font-family:'Plus Jakarta Sans',sans-serif;">
+        <label style="font-size:11.5px;color:#7e7577;display:block;margin-bottom:5px;font-family:'Plus Jakarta Sans',sans-serif;">지역 선택 <span style="color:#e2536f;">*</span></label>
+        <div style="display:flex;gap:6px;">
+          <select id="ri_r1" onchange="recoR1()" style="flex:1;padding:10px 8px;border:1.5px solid #d0c3c6;border-radius:12px;font-size:12.5px;outline:none;background:#fff;font-family:'Plus Jakarta Sans',sans-serif;"></select>
+          <select id="ri_r2" onchange="recoR2()" style="flex:1;padding:10px 8px;border:1.5px solid #d0c3c6;border-radius:12px;font-size:12.5px;outline:none;background:#fff;font-family:'Plus Jakarta Sans',sans-serif;"><option value="">시/군/구</option></select>
+          <select id="ri_r3" style="flex:1;padding:10px 8px;border:1.5px solid #d0c3c6;border-radius:12px;font-size:12.5px;outline:none;background:#fff;font-family:'Plus Jakarta Sans',sans-serif;"><option value="">읍/면/동</option></select>
+        </div>
       </div>
       <div style="margin-bottom:13px;">
         <label style="font-size:11.5px;color:#7e7577;display:block;margin-bottom:5px;font-family:'Plus Jakarta Sans',sans-serif;">진료과</label>
-        <input type="text" id="ri_spec" placeholder="예) 치과" style="width:100%;padding:10px 12px;border:1.5px solid #d0c3c6;border-radius:12px;font-size:13px;outline:none;font-family:'Plus Jakarta Sans',sans-serif;">
+        <select id="ri_spec" style="width:100%;padding:10px 12px;border:1.5px solid #d0c3c6;border-radius:12px;font-size:13px;outline:none;background:#fff;font-family:'Plus Jakarta Sans',sans-serif;"></select>
       </div>
       <div style="margin-bottom:13px;">
         <label style="font-size:11.5px;color:#7e7577;display:block;margin-bottom:6px;font-family:'Plus Jakarta Sans',sans-serif;">추천 이유 <span style="color:#e2536f;">*</span> <span style="color:#b0a8aa;">(복수 선택)</span></label>
@@ -739,11 +743,33 @@ function renderRecoChips() {
 }
 function toggleReason(r) { recoSel.has(r) ? recoSel.delete(r) : recoSel.add(r); renderRecoChips(); }
 
+function recoR1() {
+  const r1 = document.getElementById("ri_r1").value;
+  const e2 = document.getElementById("ri_r2"), e3 = document.getElementById("ri_r3");
+  e3.innerHTML = '<option value="">읍/면/동</option>';
+  if (r1 && RG[r1]) {
+    e2.innerHTML = '<option value="">시/군/구</option>' + Object.keys(RG[r1].d).map(k=>`<option value="${k}">${k}</option>`).join("");
+  } else { e2.innerHTML = '<option value="">시/군/구</option>'; }
+}
+function recoR2() {
+  const r1 = document.getElementById("ri_r1").value, r2 = document.getElementById("ri_r2").value;
+  const e3 = document.getElementById("ri_r3");
+  if (r1 && r2 && RG[r1] && RG[r1].d[r2]) {
+    e3.innerHTML = '<option value="">읍/면/동</option>' + (RG[r1].d[r2].t||[]).map(d=>`<option value="${d}">${d}</option>`).join("");
+  } else { e3.innerHTML = '<option value="">읍/면/동</option>'; }
+}
+
 function openReco() {
   recoSel = new Set();
   document.getElementById("ri_name").value = "";
-  document.getElementById("ri_region").value = (typeof lF === "string" && lF !== "내 위치") ? lF : "";
-  document.getElementById("ri_spec").value = (SP.find(s=>s.id===ss)||{}).l || "";
+  // 지역 드롭다운 초기화 (현재 검색 지역으로 가능한 만큼 자동 선택)
+  document.getElementById("ri_r1").innerHTML = '<option value="">시/도</option>' + Object.keys(RG).map(k=>`<option value="${k}">${k}</option>`).join("");
+  document.getElementById("ri_r2").innerHTML = '<option value="">시/군/구</option>';
+  document.getElementById("ri_r3").innerHTML = '<option value="">읍/면/동</option>';
+  if (s1 && RG[s1]) { document.getElementById("ri_r1").value = s1; recoR1(); if (s2v) { document.getElementById("ri_r2").value = s2v; recoR2(); if (s3v) document.getElementById("ri_r3").value = s3v; } }
+  // 진료과 드롭다운
+  document.getElementById("ri_spec").innerHTML = SP.map(s=>`<option value="${s.l}">${s.i} ${s.l}</option>`).join("");
+  document.getElementById("ri_spec").value = (SP.find(s=>s.id===ss)||{}).l || "치과";
   document.getElementById("ri_comment").value = "";
   const msg = document.getElementById("ri_msg"); msg.style.display = "none";
   const btn = document.getElementById("ri_submit"); btn.disabled = false; btn.textContent = "제보 등록하기";
@@ -754,13 +780,14 @@ function closeReco() { document.getElementById("rm").classList.remove("open"); }
 
 async function submitReco() {
   const name = document.getElementById("ri_name").value.trim();
-  const region = document.getElementById("ri_region").value.trim();
+  const r1 = document.getElementById("ri_r1").value, r2 = document.getElementById("ri_r2").value, r3 = document.getElementById("ri_r3").value;
+  const region = [r1, r2, r3].filter(Boolean).join(" ");
   const spec = document.getElementById("ri_spec").value.trim();
   const comment = document.getElementById("ri_comment").value.trim();
   const msg = document.getElementById("ri_msg");
   const show = (t, ok) => { msg.style.display = "block"; msg.textContent = t; msg.style.color = ok ? "#0F6E56" : "#ba1a1a"; };
   if (!name) return show("병원 이름을 입력해주세요.", false);
-  if (!region) return show("지역을 입력해주세요.", false);
+  if (!r1 || !r2) return show("지역(시/도, 시/군/구)을 선택해주세요.", false);
   if (recoSel.size === 0) return show("추천 이유를 1개 이상 선택해주세요.", false);
   const btn = document.getElementById("ri_submit"); btn.disabled = true; btn.textContent = "등록 중...";
   try {
@@ -895,6 +922,7 @@ function rmm() {
   bounds.extend(new kakao.maps.LatLng(uLat, uLng));
 
   ls.forEach(h=>{
+    if (h.an.userOnly) return; // 좌표 없는 사용자 제보 병원은 지도에서 제외
     const c = SC[h.an.st];
     const pos = new kakao.maps.LatLng(h.lat, h.lng);
     bounds.extend(pos);
@@ -977,7 +1005,7 @@ function rl() {
           <div style="font-size:11px;font-weight:700;color:#ba1a1a;margin-bottom:6px;font-family:'Plus Jakarta Sans',sans-serif;">⚠️ 아쉬움 언급</div>
           ${negS.map(s=>`<a href="${s.l}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:block;font-size:11.5px;color:#6b1414;text-decoration:none;line-height:1.5;margin-bottom:5px;border-bottom:1px dashed #f0d4cf;padding-bottom:4px;">· ${esc(s.t)} <span style="color:#c08a84;">[${s.src}] ↗</span></a>`).join("")}
         </div>` : ''}
-        ${(!posS.length && !negS.length) ? '<div style="text-align:center;padding:10px;font-size:12px;color:#7e7577;">표시할 실제 후기 글이 없습니다.</div>' : ''}
+        ${(!posS.length && !negS.length) ? `<div style="text-align:center;padding:10px;font-size:12px;color:#7e7577;">${h.an.userOnly?'📝 사용자 제보로 등록된 병원입니다. (포털 후기 미수집)':'표시할 실제 후기 글이 없습니다.'}</div>` : ''}
 
         ${h.an.userCount>0 ? `<div style="background:#fff0f3;border-radius:12px;padding:10px 12px;margin-bottom:8px;">
           <div style="font-size:11px;font-weight:700;color:#7a3b50;margin-bottom:6px;font-family:'Plus Jakarta Sans',sans-serif;">👥 사용자 제보 추천 이유 (${h.an.userCount}명)</div>
@@ -1094,6 +1122,24 @@ async function doSearch() {
     } else { h.an.userCount = 0; }
   }));
   document.getElementById("la").style.display = "none";
+
+  // 네이버에 안 잡혔지만 사용자 제보가 있는 병원도 결과에 노출 (데이터 축적 취지)
+  const matchedNames = new Set(hs.map(h => normName(h.name)));
+  const regTokens = (lF || "").split(" ").filter(Boolean);
+  let uIdx = 0;
+  Object.values(recos).forEach(ur => {
+    if (matchedNames.has(normName(ur.name))) return;             // 이미 표시된 병원
+    const regionMatch = regTokens.length ? regTokens.some(t => (ur.region || "").includes(t)) : true;
+    const specMatch = !ur.specialty || ur.specialty === sp.l;    // 진료과 일치(또는 미기재)
+    if (!regionMatch || !specMatch) return;
+    hs.push({
+      id: "u" + (uIdx++), name: ur.name, lat: uLat, lng: uLng,
+      addr: ur.region || "", dist: 0, phone: "", desc: "", cat: ur.specialty || "", link: "",
+      an: { pc:0, nc:0, total:0, samples:[], feat:[], doctorCnt:null,
+            s: ur.count, st:"clean", gr:"A", mtd:"사용자 제보", loaded:true,
+            userCount: ur.count, userReasons: ur.reasons || {}, userComments: ur.comments || [], userOnly:true }
+    });
+  });
 
   // 긍정 후기가 실증된 병원만 '착한병원'으로 노출 (근거 없으면 표시 안 함)
   // 부정 우세(warning)·후기 없음(unknown)은 별도 집계 후 기본 목록에서 제외
