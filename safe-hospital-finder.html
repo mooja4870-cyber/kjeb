@@ -431,7 +431,7 @@ tailwind.config = {
 <!-- ══ SCRIPT ══ -->
 <script src="/regions.js"></script>
 <script>
-const API = window.location.hostname === "localhost" ? "http://localhost:3000" : "/api";
+const API = window.location.hostname === "localhost" ? window.location.origin : "/api";
 
 async function napi(q, n=5) {
   try {
@@ -776,7 +776,7 @@ function gf() {
 // ── 지도 (카카오맵 API 전환) ─────────────────────────────────────────────────────────
 function il() {
   if (!window.kakao || !window.kakao.maps) {
-    document.getElementById("map").innerHTML = `<div style="padding:20px;text-align:center;color:#EF5353;font-size:12px;">⚠️ 카카오맵 스크립트를 불러올 수 없습니다.<br>카카오 개발자 센터에서 <b>http://localhost:3000</b> 도메인 등록이 정상적으로 완료되었는지 확인해 주세요. (저장 버튼 클릭 필수)</div>`;
+    document.getElementById("map").innerHTML = `<div style="padding:20px;text-align:center;color:#EF5353;font-size:12px;">⚠️ 카카오맵 스크립트를 불러올 수 없습니다.<br>카카오 개발자 센터에서 <b>http://localhost:4156</b> 도메인 등록이 정상적으로 완료되었는지 확인해 주세요. (저장 버튼 클릭 필수)</div>`;
     return;
   }
   const pos = new kakao.maps.LatLng(uLat, uLng);
