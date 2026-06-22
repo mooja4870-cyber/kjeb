@@ -66,6 +66,11 @@ tailwind.config = {
 
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; word-break: keep-all; overflow-wrap: break-word; }
+  @keyframes recoBlink {
+    0%,100% { border-color:#03C75A; box-shadow:0 0 0 0 rgba(3,199,90,0); }
+    50%     { border-color:#9be8bf; box-shadow:0 0 0 4px rgba(3,199,90,0.18); }
+  }
+  .reco-cta { animation: recoBlink 1.2s ease-in-out infinite; }
   body {
     background-color: #fbf9f8;
     color: #1b1c1c;
@@ -377,7 +382,7 @@ tailwind.config = {
     <div id="hl" style="padding:0 16px;display:flex;flex-direction:column;gap:10px;"></div>
 
     <!-- 착한병원 제보 진입 -->
-    <div style="margin:14px 16px 0;padding:12px;border:1px dashed #d1c3c6;border-radius:14px;background:#fff8fa;display:flex;align-items:center;gap:10px;">
+    <div class="reco-cta" style="margin:14px 16px 0;padding:12px;border:2px dashed #03C75A;border-radius:14px;background:#fff8fa;display:flex;align-items:center;gap:10px;">
       <span style="font-size:20px;">👍</span>
       <div style="flex:1;">
         <div style="font-size:13px;font-weight:700;color:#1b1c1c;font-family:'Plus Jakarta Sans',sans-serif;">내가 아는 착한병원 제보하기</div>
