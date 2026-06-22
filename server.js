@@ -11,7 +11,7 @@ const sqlite3 = require('sqlite3').verbose();
 const dbPath = path.join(__dirname, 'hira_data.db');
 const db = new sqlite3.Database(dbPath);
 
-const PORT = 3000;
+const PORT = 4156;
 const NAVER_CLIENT_ID = "PqOwK5a2oVVs6zmEOjWm";
 const NAVER_CLIENT_SECRET = "SjK8rv8Nd7";
 
