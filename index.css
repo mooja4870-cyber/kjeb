@@ -131,6 +131,13 @@ body {
 }
 .btn-primary:active { background: var(--primary-hover); }
 
+.btn-secondary {
+  background: #fff; color: var(--primary);
+  border: 2px solid var(--primary);
+  box-shadow: 0 4px 12px rgba(3, 199, 90, 0.12);
+}
+.btn-secondary:active { background: var(--primary-light); }
+
 .hero-actions { display: none; } /* Hidden on mobile in favor of bottom bar */
 
 /* Illustration placeholder */
@@ -290,6 +297,9 @@ body {
   padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
   z-index: 999;
   box-shadow: var(--shadow-bottom);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 .mobile-bottom-btn {
   margin: 0;
