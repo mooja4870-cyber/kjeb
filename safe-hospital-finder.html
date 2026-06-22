@@ -270,11 +270,17 @@ tailwind.config = {
     <span class="material-symbols-outlined text-[#665c5e]" style="font-size:22px;">health_and_safety</span>
     <h1 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:18px;font-weight:800;color:#665c5e;letter-spacing:-0.01em;" title="과잉진료없는 병원">KJEB</h1>
   </div>
-  <button onclick="openLM()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold" style="font-family:'Plus Jakarta Sans',sans-serif;background:#fff0f3;color:#665c5e;border:1.5px solid #d1c3c6;">
-    <span class="material-symbols-outlined" style="font-size:14px;">location_on</span>
-    <span id="ln">고양시</span>
-    <span style="color:#d1c3c6;">›</span>
-  </button>
+  <div class="flex items-center gap-2">
+    <button onclick="gps()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold" style="font-family:'Plus Jakarta Sans',sans-serif;background:#03C75A;color:#fff;border:1.5px solid #03C75A;">
+      <span class="material-symbols-outlined" style="font-size:14px;">my_location</span>
+      <span id="ln">내위치(GPS)</span>
+    </button>
+    <button onclick="openLM()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold" style="font-family:'Plus Jakarta Sans',sans-serif;background:#fff0f3;color:#665c5e;border:1.5px solid #d1c3c6;">
+      <span class="material-symbols-outlined" style="font-size:14px;">location_on</span>
+      다른 위치
+      <span style="color:#d1c3c6;">›</span>
+    </button>
+  </div>
 </header>
 
 <!-- ══ MAIN ══ -->
