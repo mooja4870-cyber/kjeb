@@ -1298,7 +1298,7 @@ function cfl() {
 // 헤더 GPS 버튼 라벨/상태 갱신
 function setGpsLabel(txt) { const e = document.getElementById("ln"); if (e) e.textContent = txt; }
 
-// 좌표 → 지역명 변환 (서버 /revgeo, 카카오 폴백) 후 자동 검색
+// 좌표 → 지역명 변환 (서버 /revgeo, Nominatim) 후 자동 검색
 async function resolveAndSearch(silentNoSearch) {
   try {
     const r = await fetch(`${API}/revgeo?lat=${uLat}&lng=${uLng}`);
