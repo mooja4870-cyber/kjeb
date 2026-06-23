@@ -8,4 +8,4 @@ compatibility_date = "2024-09-23"
 [[d1_databases]]
 binding = "DB"
 database_name = "kjeb-db"
-database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+database_id = "5f47deb5-cc84-4855-9534-0dc8b922d06c"
