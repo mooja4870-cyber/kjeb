@@ -40,10 +40,11 @@ function neutralizePos(text) {
 
 // Render 등 클라우드는 PORT 환경변수를 주입함. 없으면 로컬 기본값 4156.
 const PORT = process.env.PORT || 4156;
-// 데이터 API를 운영(Cloudflare/D1)으로 프록시 → 로컬·CF가 동일한 캐시·데이터 사용(병원 수 일치).
+// 검색/후기/역지오코딩은 운영(Cloudflare/D1)으로 프록시 → 로컬·CF가 동일한 캐시·데이터 사용(병원 수 일치).
+// 단, 착한병원 제보(/recommend·/recommendations)는 프록시 제외 → 로컬 서버 내부 DB(user_recos)에 저장·관리.
 // 완전 로컬(오프라인) 처리를 원하면 DATA_PROXY=off 로 실행.
 const DATA_PROXY = process.env.DATA_PROXY === "off" ? null : (process.env.DATA_PROXY || "https://kjeb.pages.dev/api");
-const PROXY_PATHS = ["/search", "/mentions", "/recommendations", "/recommend", "/revgeo"];
+const PROXY_PATHS = ["/search", "/mentions", "/revgeo"];
 // 시크릿은 환경변수 우선(배포 시 Render에 등록). 미설정 시 로컬 개발용 폴백.
 const NAVER_CLIENT_ID = process.env.NAVER_CLIENT_ID || "PqOwK5a2oVVs6zmEOjWm";
 const NAVER_CLIENT_SECRET = process.env.NAVER_CLIENT_SECRET || "SjK8rv8Nd7";
