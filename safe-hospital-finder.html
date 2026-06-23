@@ -505,13 +505,21 @@ if ('serviceWorker' in navigator) {
 }
 const API = window.location.hostname === "localhost" ? window.location.origin : "/api";
 
+// 네트워크 실패 시 null 반환(콜드스타트 구분용), 성공 시 배열(빈 배열 포함)
 async function napi(q, n=5) {
-  try {
-    const r = await fetch(`${API}/search?query=${encodeURIComponent(q)}&display=${n}&sort=random`);
-    const d = await r.json();
-    return d.items || [];
-  } catch(e) { console.error("API:", e); return []; }
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const r = await fetch(`${API}/search?query=${encodeURIComponent(q)}&display=${n}&sort=random`);
+      if (!r.ok) throw new Error("http " + r.status);
+      const d = await r.json();
+      return d.items || [];
+    } catch(e) { if (attempt === 0) await new Promise(s => setTimeout(s, 1500)); }
+  }
+  return null;
 }
+
+// 서버 깨우기(콜드스타트 완화) — 페이지 로드 시 1회
+function warmUp() { try { fetch(`${API}/recommendations`, { cache: "no-store" }).catch(()=>{}); } catch(e) {} }
 
 const PROVINCES = ["서울특별시","서울","부산광역시","부산","대구광역시","대구","인천광역시","인천","광주광역시","광주","대전광역시","대전","울산광역시","울산","세종특별자치시","세종","경기도","강원특별자치도","강원도","강원","충청북도","충북","충청남도","충남","전북특별자치도","전라북도","전북","전라남도","전남","경상북도","경북","경상남도","경남","제주특별자치도","제주도","제주"];
 async function multiSearch(baseLocation, keyword) {
@@ -535,14 +543,16 @@ async function multiSearch(baseLocation, keyword) {
   }
   const qArr = [...queries].slice(0, 8);
   const results = await Promise.all(qArr.map(q => napi(q, 5)));
+  // 모든 쿼리가 네트워크 실패(null)면 서버 미응답(콜드스타트)로 간주
+  const serverError = results.every(r => r === null);
   const seen = new Set(); const merged = [];
-  results.flat().forEach(item => {
+  results.filter(Boolean).flat().forEach(item => {
     const key = (item.roadAddress || item.address || "").trim();
     const name = item.title.replace(/<[^>]*>/g, "").trim();
     const dedup = key || name;
     if (!seen.has(dedup)) { seen.add(dedup); merged.push(item); }
   });
-  return merged;
+  return { items: merged, serverError };
 }
 
 const AREA_MAP = {
@@ -1074,12 +1084,22 @@ async function doSearch() {
   eid=null; hid=null; hs=[];
 
   const sp = SP.find(s=>s.id===ss);
-  const items = await multiSearch(lF, sp.k);
+  let ms = await multiSearch(lF, sp.k);
+  // 콜드스타트(서버 미응답)면 잠시 후 자동 재시도 (최대 2회, 서버 깨어날 시간 확보)
+  for (let retry = 0; retry < 2 && ms.serverError; retry++) {
+    document.getElementById("ltt").textContent = "서버를 깨우는 중입니다… 잠시만요 ⏳";
+    await new Promise(s => setTimeout(s, 6000));
+    ms = await multiSearch(lF, sp.k);
+  }
+  const items = ms.items;
   document.getElementById("la").style.display = "none";
 
   if (!items.length) {
     document.getElementById("ea").style.display = "block";
-    document.getElementById("ea").innerHTML = `<div style="margin:0 16px;padding:16px;border-radius:16px;background:#ffdad6;border:1px solid #EF5353;font-size:12px;color:#93000a;line-height:1.6;font-family:'Plus Jakarta Sans',sans-serif;">🔍 "${lN}" 주변에서 ${sp.l}를 찾을 수 없습니다.<br><br>⚠️ <strong>node server.js</strong>가 실행 중인지 확인해주세요.</div>`;
+    const msg = ms.serverError
+      ? `⏳ 서버가 깨어나는 중입니다. 잠시 후 <strong>다시 검색</strong>해 주세요.<br><span style="font-size:11px;color:#a06;">(무료 서버는 미사용 시 잠들어 첫 요청이 느릴 수 있어요)</span>`
+      : `🔍 "${lN}" 주변에서 ${sp.l}를 찾을 수 없습니다.<br><span style="font-size:11px;">'다른 위치'로 지역을 바꿔보시거나, 다른 진료과를 선택해 보세요.</span>`;
+    document.getElementById("ea").innerHTML = `<div style="margin:0 16px;padding:16px;border-radius:16px;background:#ffdad6;border:1px solid #EF5353;font-size:12px;color:#93000a;line-height:1.6;font-family:'Plus Jakarta Sans',sans-serif;">${msg}</div>`;
     btn.disabled=false; usb(); return;
   }
 
@@ -1372,6 +1392,7 @@ function gps(silentNoSearch) {
 
 // ── 초기화 ────────────────────────────────────────────────────────
 rsg(); usb();
+warmUp(); // 서버 깨우기(콜드스타트 완화)
 // 앱 실행 시 자동으로 내 위치(GPS)만 조용히 반영 (검색·알림 없음)
 setTimeout(() => gps(true), 300);
 </script>
