@@ -51,4 +51,5 @@
 | v0.12.1 | 2026-06-22 16:36:00 | [APK 2단계] Render 배포 준비 — server.js PORT(process.env.PORT)·Naver 시크릿 환경변수화, node_modules Git 추적 해제(.gitignore, Render가 Linux용 sqlite3 새로 빌드), render.yaml(무료 web service) 추가, package.json engines(node>=18)·main 수정 | c6f3d37 | Render 배포 준비 |
 | v0.12.2 | 2026-06-22 16:50:00 | 지도 엔진 카카오맵 → 네이버 지도(NAVER Maps JS v3)로 교체. SDK·il()·rmm()·cmc()·fm()·sv(resize) 전환(Marker 커스텀 아이콘, fitBounds), 카카오 services 역지오코딩 폴백 제거(Nominatim 단일화). ncpKeyId는 placeholder(발급 후 교체 필요) | 5c4b0aa | 지도 엔진 교체 |
 | v0.12.3 | 2026-06-22 16:50:00 | 네이버 지도 실 Client ID(ncpKeyId=bxbbw0o66m) 적용 | 366047e | 지도 키 적용 |
-| v0.12.4 | 2026-06-22 22:30:00 | 서비스워커 캐시가 옛(카카오) 페이지를 계속 보여주던 문제 수정 — 캐시 버전 kjeb-v1→v2, HTML 문서는 network-first(갱신 즉시 반영, 오프라인 캐시 폴백)로 변경. 잔여 카카오 주석 정리 | HEAD | SW 캐시 갱신 버그 수정 |
+| v0.12.4 | 2026-06-22 22:30:00 | 서비스워커 캐시가 옛(카카오) 페이지를 계속 보여주던 문제 수정 — 캐시 버전 kjeb-v1→v2, HTML 문서는 network-first(갱신 즉시 반영, 오프라인 캐시 폴백)로 변경. 잔여 카카오 주석 정리 | e57b0ec | SW 캐시 갱신 버그 수정 |
+| v0.13.0 | 2026-06-23 10:44:00 | [APK 3단계] TWA APK 생성·서명 완료 — Bubblewrap+로컬 macOS Android SDK(android-36/build-tools36)로 kjeb.onrender.com 래핑, 서명키(android.keystore) 생성, kjeb.apk(855KB, com.kjeb.app, v1.0.0) 저장소 루트에 배포. 다운로드 링크 main→master 정정. 빌드폴더 twa/ 및 서명키는 .gitignore(보안) | HEAD | APK 빌드/배포 |
