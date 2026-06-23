@@ -1,0 +1,23 @@
+# Pages 정적 업로드에서 제외 (서버 파일·대용량·민감 파일)
+node_modules
+.git
+functions
+migrations
+*.db
+*.apk
+*.md
+server.js
+server (1).js
+seed.js
+hira_batch.js
+check_naver.js
+gen-icons.js
+test.js
+temp.js
+twa
+kjeb
+api
+wrangler.toml
+package*.json
+render.yaml
+vercel.json
