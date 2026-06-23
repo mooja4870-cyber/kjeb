@@ -40,6 +40,10 @@ function neutralizePos(text) {
 
 // Render 등 클라우드는 PORT 환경변수를 주입함. 없으면 로컬 기본값 4156.
 const PORT = process.env.PORT || 4156;
+// 데이터 API를 운영(Cloudflare/D1)으로 프록시 → 로컬·CF가 동일한 캐시·데이터 사용(병원 수 일치).
+// 완전 로컬(오프라인) 처리를 원하면 DATA_PROXY=off 로 실행.
+const DATA_PROXY = process.env.DATA_PROXY === "off" ? null : (process.env.DATA_PROXY || "https://kjeb.pages.dev/api");
+const PROXY_PATHS = ["/search", "/mentions", "/recommendations", "/recommend", "/revgeo"];
 // 시크릿은 환경변수 우선(배포 시 Render에 등록). 미설정 시 로컬 개발용 폴백.
 const NAVER_CLIENT_ID = process.env.NAVER_CLIENT_ID || "PqOwK5a2oVVs6zmEOjWm";
 const NAVER_CLIENT_SECRET = process.env.NAVER_CLIENT_SECRET || "SjK8rv8Nd7";
@@ -61,6 +65,28 @@ const server = http.createServer((req, res) => {
   if (req.method === "OPTIONS") { res.writeHead(200); res.end(); return; }
 
   const parsed = url.parse(req.url, true);
+
+  // [데이터 프록시] /search·/mentions 등은 운영(CF/D1)으로 넘겨 로컬·CF 결과 일치 보장
+  if (DATA_PROXY && PROXY_PATHS.includes(parsed.pathname)) {
+    const target = DATA_PROXY + parsed.pathname + (parsed.search || "");
+    const opts = {
+      method: req.method,
+      headers: {
+        "Content-Type": "application/json",
+        "X-Forwarded-For": (req.headers["x-forwarded-for"] || req.socket.remoteAddress || "").split(",")[0].trim(),
+      },
+    };
+    const preq = https.request(target, opts, (pres) => {
+      res.writeHead(pres.statusCode || 200, {
+        "Content-Type": pres.headers["content-type"] || "application/json; charset=utf-8",
+        "Access-Control-Allow-Origin": "*",
+      });
+      pres.pipe(res);
+    });
+    preq.on("error", (e) => { res.writeHead(502, { "Content-Type": "application/json" }); res.end(JSON.stringify({ error: "proxy: " + e.message })); });
+    if (req.method === "POST") req.pipe(preq); else preq.end();
+    return;
+  }
 
   // 착한병원 제보 등록 (POST)
   if (req.method === "POST" && parsed.pathname === "/recommend") {
