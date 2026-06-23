@@ -1403,11 +1403,13 @@ async function serverReverse(lat, lng) {
   return null;
 }
 
-// 좌표 → 지역명 변환 (네이버 → 브라우저 Nominatim → 서버 순 폴백) 후 자동 검색
+// 좌표 → 지역명 변환 후 자동 검색.
+// origin(로컬·CF)에 무관하게 동일한 lF을 얻으려면 서버 /revgeo(프록시→동일 응답)를 최우선 사용.
+// 네이버 reverseGeocode는 지도 도메인 등록 여부로 origin마다 성공/실패가 갈려 lF(=검색 쿼리)이 어긋나므로 최후순위로 둠.
 async function resolveAndSearch(silentNoSearch) {
-  let g = await naverReverse(uLat, uLng);
+  let g = await serverReverse(uLat, uLng);
   if (!g) g = await nominatimReverse(uLat, uLng);
-  if (!g) g = await serverReverse(uLat, uLng);
+  if (!g) g = await naverReverse(uLat, uLng);
   if (g && g.full) {
     lN = g.name || "내 위치";
     lF = g.full;
