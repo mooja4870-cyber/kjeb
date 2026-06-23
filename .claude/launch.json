@@ -5,7 +5,8 @@
       "name": "kjeb",
       "runtimeExecutable": "node",
       "runtimeArgs": ["server.js"],
-      "port": 4156
+      "port": 4156,
+      "autoPort": true
     }
   ]
 }

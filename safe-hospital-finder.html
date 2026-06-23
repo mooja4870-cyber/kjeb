@@ -507,15 +507,29 @@ const API = window.location.hostname === "localhost" ? window.location.origin : 
 
 // 네트워크 실패 시 null 반환(콜드스타트 구분용), 성공 시 배열(빈 배열 포함)
 async function napi(q, n=5) {
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const r = await fetch(`${API}/search?query=${encodeURIComponent(q)}&display=${n}&sort=random`);
       if (!r.ok) throw new Error("http " + r.status);
       const d = await r.json();
       return d.items || [];
-    } catch(e) { if (attempt === 0) await new Promise(s => setTimeout(s, 1500)); }
+    } catch(e) { if (attempt < 2) await new Promise(s => setTimeout(s, 700 * (attempt + 1))); }
   }
   return null;
+}
+
+// 동시 요청 수 제한 풀러 — 네이버 동시호출 throttle 방지(순서 보존)
+async function runPool(items, limit, fn) {
+  const out = new Array(items.length);
+  let idx = 0;
+  const worker = async () => {
+    while (idx < items.length) {
+      const i = idx++;
+      out[i] = await fn(items[i], i);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return out;
 }
 
 // 서버 깨우기(콜드스타트 완화) — 페이지 로드 시 1회
@@ -542,7 +556,8 @@ async function multiSearch(baseLocation, keyword) {
     queries.add(baseLocation + " " + keyword);
   }
   const qArr = [...queries].slice(0, 8);
-  const results = await Promise.all(qArr.map(q => napi(q, 5)));
+  // 동시 3개로 제한해 네이버 throttle(일부 쿼리 빈응답)로 결과 수가 들쭉날쭉해지는 것 방지
+  const results = await runPool(qArr, 3, q => napi(q, 5));
   // 모든 쿼리가 네트워크 실패(null)면 서버 미응답(콜드스타트)로 간주
   const serverError = results.every(r => r === null);
   const seen = new Set(); const merged = [];
@@ -1073,6 +1088,36 @@ function rl() {
 }
 
 // ── 검색 ─────────────────────────────────────────────────────────
+// ── 검색결과 단기 캐시(10분) ── 같은 지역+진료과 재검색 시 동일 목록 보장(개수 변동 방지)
+const SEARCH_TTL = 10 * 60 * 1000;
+// 키는 검색 시작 시점의 (지역+진료과)로 1회 고정해 호출자가 넘긴다 (lF는 gps/모달로 도중 변할 수 있음)
+function loadSearchCache(key) {
+  try {
+    const o = JSON.parse(sessionStorage.getItem(key) || "null");
+    if (!o || (Date.now() - o.ts) > SEARCH_TTL || !Array.isArray(o.hs) || !o.hs.length) return null;
+    return o;
+  } catch { return null; }
+}
+function saveSearchCache(key, data) {
+  try { sessionStorage.setItem(key, JSON.stringify({ ...data, ts: Date.now() })); } catch {}
+}
+
+// 결과 화면 렌더 (신규검색·캐시 공통)
+function showResults(noData, safe, caution) {
+  document.getElementById("ra").style.display = "block";
+  if (hs.length === 0) {
+    document.getElementById("rs").textContent = `🔍 ${(SP.find(s=>s.id===ss)||{}).l}: 실제 긍정 후기가 확인된 병원이 없습니다 (검토 ${noData}곳, 후기 데이터 없음)`;
+  } else {
+    document.getElementById("rs").textContent = `✅ 실제 후기 기준 ${hs.length}곳 (우수/양호 ${safe}, 참고 ${caution}) · 후기없음 ${noData}곳 제외`;
+  }
+  document.getElementById("srb").disabled = false; cf = "all"; cv = "list";
+  document.getElementById("blv").classList.add("act");
+  document.getElementById("bmv").classList.remove("act");
+  document.getElementById("mc").style.display = "none";
+  document.getElementById("hl").style.display = "flex";
+  rf(); rl(); il();
+}
+
 async function doSearch() {
   const btn = document.getElementById("srb");
   btn.disabled = true; btn.textContent = "🔍 검 색";
@@ -1084,6 +1129,17 @@ async function doSearch() {
   eid=null; hid=null; hs=[];
 
   const sp = SP.find(s=>s.id===ss);
+  const cacheKey = `kjeb_sc::${lF}::${ss}`; // 검색 시작 시점 고정(이후 lF가 변해도 동일 키 사용)
+
+  // 10분 내 같은 검색이면 캐시 결과 그대로 표시 (개수 변동 방지)
+  const cached = loadSearchCache(cacheKey);
+  if (cached) {
+    document.getElementById("la").style.display = "none";
+    hs = cached.hs;
+    showResults(cached.noData, cached.safe, cached.caution);
+    return;
+  }
+
   let ms = await multiSearch(lF, sp.k);
   // 콜드스타트(서버 미응답)면 잠시 후 자동 재시도 (최대 2회, 서버 깨어날 시간 확보)
   for (let retry = 0; retry < 2 && ms.serverError; retry++) {
@@ -1192,22 +1248,10 @@ async function doSearch() {
     return a.dist-b.dist;
   });
 
-  document.getElementById("ra").style.display = "block";
   const safe = hs.filter(h=>h.an.st==="trusted"||h.an.st==="clean").length;
   const caution = hs.filter(h=>h.an.st==="caution").length;
-  if (hs.length === 0) {
-    document.getElementById("rs").textContent = `🔍 ${sp.l}: 실제 긍정 후기가 확인된 병원이 없습니다 (검토 ${noData}곳, 후기 데이터 없음)`;
-  } else {
-    document.getElementById("rs").textContent = `✅ 실제 후기 기준 ${hs.length}곳 (우수/양호 ${safe}, 참고 ${caution}) · 후기없음 ${noData}곳 제외`;
-  }
-
-  btn.disabled=false; cf="all";
-  cv="list";
-  document.getElementById("blv").classList.add("act");
-  document.getElementById("bmv").classList.remove("act");
-  document.getElementById("mc").style.display = "none";
-  document.getElementById("hl").style.display = "flex";
-  rf(); rl(); il();
+  saveSearchCache(cacheKey, { hs, noData, safe, caution });
+  showResults(noData, safe, caution);
 }
 
 // ── 지역 모달 ─────────────────────────────────────────────────────
