@@ -1,0 +1,21 @@
+name: keep-render-awake
+# Render 무료 인스턴스가 잠들지 않도록 주기적으로 깨움(콜드스타트 방지)
+on:
+  schedule:
+    - cron: "*/10 * * * *"   # 10분마다 (GitHub Actions 스케줄은 다소 지연될 수 있음)
+  workflow_dispatch:           # 수동 실행도 가능
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping server
+        run: |
+          for i in 1 2 3; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 https://kjeb.onrender.com/ || echo "000")
+            echo "attempt $i -> HTTP $code"
+            [ "$code" = "200" ] && exit 0
+            sleep 20
+          done
+          echo "ping failed but not blocking"
+          exit 0
