@@ -53,3 +53,4 @@
 | v0.12.3 | 2026-06-22 16:50:00 | 네이버 지도 실 Client ID(ncpKeyId=bxbbw0o66m) 적용 | 366047e | 지도 키 적용 |
 | v0.12.4 | 2026-06-22 22:30:00 | 서비스워커 캐시가 옛(카카오) 페이지를 계속 보여주던 문제 수정 — 캐시 버전 kjeb-v1→v2, HTML 문서는 network-first(갱신 즉시 반영, 오프라인 캐시 폴백)로 변경. 잔여 카카오 주석 정리 | e57b0ec | SW 캐시 갱신 버그 수정 |
 | v0.13.0 | 2026-06-23 10:44:00 | [APK 3단계] TWA APK 생성·서명 완료 — Bubblewrap+로컬 macOS Android SDK(android-36/build-tools36)로 kjeb.onrender.com 래핑, 서명키(android.keystore) 생성, kjeb.apk(855KB, com.kjeb.app, v1.0.0) 저장소 루트에 배포. 다운로드 링크 main→master 정정. 빌드폴더 twa/ 및 서명키는 .gitignore(보안) | HEAD | APK 빌드/배포 |
+| v0.13.1 | 2026-06-23 11:00:00 | Render에서 GPS 위치변환 간헐 실패(서버 IP가 OSM Nominatim에 차단) 수정 — 역지오코딩을 브라우저(클라이언트)로 이동, 다단계 폴백(네이버 reverseGeocode → 브라우저 Nominatim → 서버 /revgeo). maps.js에 geocoder 서브모듈 추가. 사용자 IP로 처리되어 클라우드 차단 회피 | HEAD | GPS 안정화(버그 수정) |

@@ -14,7 +14,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Atkinson+Hyperlegible+Next:wght@400;700&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 <!-- 네이버 지도 SDK (NAVER Cloud Platform Maps Client ID 필요) -->
-<script type="text/javascript" src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=bxbbw0o66m"></script>
+<script type="text/javascript" src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=bxbbw0o66m&submodules=geocoder"></script>
 
 <script id="tailwind-config">
 tailwind.config = {
@@ -1298,20 +1298,59 @@ function cfl() {
 // 헤더 GPS 버튼 라벨/상태 갱신
 function setGpsLabel(txt) { const e = document.getElementById("ln"); if (e) e.textContent = txt; }
 
-// 좌표 → 지역명 변환 (서버 /revgeo, Nominatim) 후 자동 검색
-async function resolveAndSearch(silentNoSearch) {
+// 동 이름 정리(주엽2동 → 주엽동, 공백 제거)
+function dongClean(s){ return (s||"").replace(/(\d+)(동|가)$/, (m,d,t)=>t).replace(/\s/g,""); }
+
+// 1) 네이버 지도 reverseGeocode (브라우저, NCP 키 활용)
+function naverReverse(lat, lng) {
+  return new Promise(res => {
+    if (!(window.naver && naver.maps && naver.maps.Service && naver.maps.Service.reverseGeocode)) return res(null);
+    try {
+      naver.maps.Service.reverseGeocode({ coords: new naver.maps.LatLng(lat, lng), orders: "admcode,legalcode" }, (status, response) => {
+        try {
+          if (status !== naver.maps.Service.Status.OK) return res(null);
+          const region = response.v2.results[0].region;
+          const gu = (region.area2 && region.area2.name) || "";
+          const dong = (region.area3 && region.area3.name) || "";
+          const parts = [gu, dong].filter(Boolean);
+          if (!parts.length) return res(null);
+          res({ name: dongClean(dong) || gu, full: parts.join(" ") });
+        } catch (e) { res(null); }
+      });
+    } catch (e) { res(null); }
+  });
+}
+// 2) 브라우저에서 직접 Nominatim (사용자 IP → 클라우드 차단 회피)
+async function nominatimReverse(lat, lng) {
   try {
-    const r = await fetch(`${API}/revgeo?lat=${uLat}&lng=${uLng}`);
-    const d = await r.json();
-    if (d && d.ok && d.full) {
-      lN = d.name || "내 위치";
-      lF = d.full;
-      setGpsLabel(lN);
-      if (!silentNoSearch) doSearch();
-      return true;
-    }
-  } catch (e) {}
-  // 역지오코딩은 서버 /revgeo(Nominatim) 단일 경로 사용
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ko&zoom=18`);
+    const a = (await r.json()).address || {};
+    const city = a.city || a.county || a.town || "";
+    const gu = a.borough || a.city_district || "";
+    const dong = a.suburb || a.quarter || a.neighbourhood || a.village || "";
+    const parts = [city, gu, dongClean(dong)].filter(Boolean);
+    if (!parts.length) return null;
+    return { name: dongClean(dong) || gu || city, full: parts.join(" ") };
+  } catch (e) { return null; }
+}
+// 3) 서버 /revgeo (최후 폴백)
+async function serverReverse(lat, lng) {
+  try { const d = await (await fetch(`${API}/revgeo?lat=${lat}&lng=${lng}`)).json(); if (d && d.ok && d.full) return { name: d.name, full: d.full }; } catch (e) {}
+  return null;
+}
+
+// 좌표 → 지역명 변환 (네이버 → 브라우저 Nominatim → 서버 순 폴백) 후 자동 검색
+async function resolveAndSearch(silentNoSearch) {
+  let g = await naverReverse(uLat, uLng);
+  if (!g) g = await nominatimReverse(uLat, uLng);
+  if (!g) g = await serverReverse(uLat, uLng);
+  if (g && g.full) {
+    lN = g.name || "내 위치";
+    lF = g.full;
+    setGpsLabel(lN);
+    if (!silentNoSearch) doSearch();
+    return true;
+  }
   return false;
 }
 
