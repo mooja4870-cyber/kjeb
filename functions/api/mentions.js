@@ -22,11 +22,18 @@ export async function onRequestGet(context) {
 
   const naverSearch = async (type) => {
     const u = `https://openapi.naver.com/v1/search/${type}.json?query=${encodeURIComponent(name)}&display=30&sort=sim`;
-    try {
-      const r = await fetch(u, { headers: naverHeaders(env) });
-      const d = await r.json();
-      return d.items || [];
-    } catch { return []; }
+    // 일시 실패(타임아웃/빈응답) 대비 1회 재시도
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const r = await fetch(u, { headers: naverHeaders(env) });
+        if (!r.ok) throw new Error("naver " + r.status);
+        const d = await r.json();
+        return d.items || [];
+      } catch {
+        if (attempt === 0) await new Promise(s => setTimeout(s, 400));
+      }
+    }
+    return [];
   };
 
   const [blog, cafe, kin] = await Promise.all([
@@ -63,7 +70,8 @@ export async function onRequestGet(context) {
   });
 
   const result = JSON.stringify({ name, scanned: all.length, matched, pos, neg, adCount, samples: samples.slice(0, 6), adSamples: adSamples.slice(0, 4) });
-  if (env.DB) {
+  // 네이버가 실제로 응답했을 때(scanned>0)만 캐싱 — 일시 실패(0건)를 24h 캐시에 박제하지 않음
+  if (env.DB && all.length > 0) {
     try { await env.DB.prepare(`INSERT OR REPLACE INTO mention_cache (name, data, ts) VALUES (?, ?, ?)`).bind(name, result, Date.now()).run(); } catch {}
   }
   return json(result);

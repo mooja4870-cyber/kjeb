@@ -203,14 +203,23 @@ const server = http.createServer((req, res) => {
         return;
       }
 
-      const naverSearch = (type) => new Promise(resolve => {
+      const naverSearchOnce = (type) => new Promise(resolve => {
         const u = `https://openapi.naver.com/v1/search/${type}.json?query=${encodeURIComponent(name)}&display=30&sort=sim`;
         https.get(u, { headers: { "X-Naver-Client-Id": NAVER_CLIENT_ID, "X-Naver-Client-Secret": NAVER_CLIENT_SECRET } }, r => {
           let d = "";
           r.on("data", c => d += c);
-          r.on("end", () => { try { resolve(JSON.parse(d).items || []); } catch { resolve([]); } });
-        }).on("error", () => resolve([]));
+          r.on("end", () => { try { resolve(JSON.parse(d).items || null); } catch { resolve(null); } });
+        }).on("error", () => resolve(null));
       });
+      // 일시 실패/부분 throttle 대비 1회 재시도 (실패 시 null → 재시도, 최종 실패만 [])
+      const naverSearch = async (type) => {
+        for (let attempt = 0; attempt < 2; attempt++) {
+          const items = await naverSearchOnce(type);
+          if (items) return items;
+          if (attempt === 0) await new Promise(s => setTimeout(s, 400));
+        }
+        return [];
+      };
 
       Promise.all([naverSearch("blog"), naverSearch("cafearticle"), naverSearch("kin")]).then(([blog, cafe, kin]) => {
         const all = [
@@ -244,7 +253,8 @@ const server = http.createServer((req, res) => {
           else if (hasPos && hasNeg) { pos++; samples.push({ t: title, l: it.link, src: it.src, s: "mixed" }); }
         });
         const result = JSON.stringify({ name, scanned: all.length, matched, pos, neg, adCount, samples: samples.slice(0, 6), adSamples: adSamples.slice(0, 4) });
-        db.run(`INSERT OR REPLACE INTO mention_cache (name, data, ts) VALUES (?, ?, ?)`, [name, result, Date.now()]);
+        // 네이버가 실제로 응답했을 때(scanned>0)만 캐싱 — 일시 실패(0건)를 24h 캐시에 박제하지 않음
+        if (all.length > 0) db.run(`INSERT OR REPLACE INTO mention_cache (name, data, ts) VALUES (?, ?, ?)`, [name, result, Date.now()]);
         sendJson(result);
       });
     });
