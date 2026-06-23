@@ -57,3 +57,4 @@
 | v0.13.2 | 2026-06-23 11:00:00 | Render 콜드스타트로 검색이 0건/"node server.js 확인"으로 뜨던 문제 완화 — 페이지 로드 시 서버 워밍업 핑, napi 재시도(1회)+네트워크실패 구분(null), multiSearch가 serverError 반환, doSearch가 콜드스타트 시 자동 재시도(6초×2)+친화적 메시지("서버 깨우는 중") 표시 | HEAD | 콜드스타트 UX 강화 |
 | v0.13.3 | 2026-06-23 11:00:00 | 콜드스타트 근본 완화 — GitHub Actions cron(10분마다 https://kjeb.onrender.com 핑)으로 Render 무료 인스턴스가 잠들지 않게 유지(.github/workflows/keepalive.yml). 사용자 추가 설정 불필요 | HEAD | 서버 keep-alive |
 | v0.13.4 | 2026-06-23 11:00:00 | 랜딩 페이지에서 'APK 다운로드' + '웹으로 바로 검색' 버튼 삭제(히어로 hero-actions 및 하단 플로팅 바 mobile-bottom-bar 제거) | HEAD | UI 정리 |
+| v0.13.5 | 2026-06-23 11:00:00 | 랜딩에서 '웹으로 바로 검색' 버튼만 복원(히어로+하단 플로팅 바), 'APK 다운로드' 버튼은 계속 제외 | HEAD | UI 복원 |
