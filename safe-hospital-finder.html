@@ -650,6 +650,8 @@ const SP = [
   {id:"uro",l:"비뇨의학과",i:"🏥",c:"#0EA5E9",r:3,k:"비뇨기과",cats:["비뇨의학과","비뇨기과"],words:["비뇨의학과","비뇨기과","비뇨"]},
   {id:"kor",l:"한의원",i:"🍃",c:"#22C55E",r:3,k:"한의원",cats:["한의원","한방병원"],words:["한의원","한방병원","한방"]},
 ];
+// 진료과 표시용 — 가나다순 정렬 (선택/검색 로직은 SP의 id로 동작하므로 영향 없음)
+const SP_SORTED = [...SP].sort((a, b) => a.l.localeCompare(b.l, "ko"));
 
 function validateSpecialty(h, sp) {
   const cat = h.cat || "";
@@ -945,18 +947,16 @@ async function fetchRecos() {
 // ── 진료과 버튼 렌더 ─────────────────────────────────────────────
 function rsg() {
   const g = document.getElementById("sg");
-  const v = sa ? SP : SP.filter(s => s.r <= 2);
-  g.innerHTML = v.map(s => {
+  // 11개 진료과 전부 표시(펼치기 불필요) · 가나다순
+  g.innerHTML = SP_SORTED.map(s => {
     const a = s.id === ss;
     return `<button class="spec-btn ${a?'act':''}" onclick="ssp('${s.id}')">
       <div class="si">${s.i}</div>
       <div class="sl" style="${a?'color:#665c5e':''}">${s.l}</div>
     </button>`;
   }).join("");
-  const r3 = SP.filter(s => s.r === 3);
   const smb = document.getElementById("smb");
-  smb.style.display = r3.length ? "block" : "none";
-  document.getElementById("sml").textContent = sa ? "접기 ▴" : "+ " + r3.map(s=>s.l).join(", ") + " ▾";
+  if (smb) smb.style.display = "none"; // 전부 펼쳐 보이므로 더보기 버튼 숨김
 }
 
 function tms() { sa=!sa; rsg(); }
