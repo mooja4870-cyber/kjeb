@@ -60,12 +60,19 @@ export async function onRequestGet(context) {
     if (r) { nonpay = JSON.parse(r.data); nonpayAsOf = r.ts; }
   } catch {}
 
+  // 적정성평가 등급 (약제 과잉처방 직결 항목)
+  let asm = null, asmAsOf = null;
+  try {
+    const r = await env.DB.prepare(`SELECT data, ts FROM hira_asm WHERE ykiho=?`).bind(c.ykiho).first();
+    if (r) { asm = JSON.parse(r.data); asmAsOf = r.ts; }
+  } catch {}
+
   return json({
     matched: true, confidence,
     ykiho: c.ykiho, hiraName: c.name, hiraAddr: c.addr,
     doctorCnt: c.dr, estbYear: estbYear || null, opYears, clNm: c.cl,
     distM: isFinite(dist) ? Math.round(dist) : null,
-    nonpay, nonpayAsOf,
+    nonpay, nonpayAsOf, asm, asmAsOf,
     source: "건강보험심사평가원 병원기본정보(hospInfoServicev2)", asOf,
   });
 }

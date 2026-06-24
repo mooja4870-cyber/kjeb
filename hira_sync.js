@@ -10,11 +10,16 @@ const fs = require("fs");
 const path = require("path");
 
 const HIRA_KEY = process.env.HIRA_KEY || "d1872140b5c5731a0901e66e2fd1c219318063a5b9735a83e47efae4567352a6";
+// 병원평가정보서비스(적정성평가)는 별도 승인 키 사용
+const ASM_KEY = process.env.HIRA_ASM_KEY || "8dbbe3e9f0e296a2ebfba5741fe1fb2dda15af916f7214d62e494cffcff987ef";
+// 과잉진료 직결 약제 적정성 항목 (코드→쉬운 라벨). 1등급=적정(과잉처방 적음) ~ 5등급=하위
+const ASM_ITEMS = { "07": "감기 항생제 처방", "08": "주사제 처방", "09": "처방 약품 가짓수", "23": "기관지염 항생제 처방" };
 let args = process.argv.slice(2);
 const NONPAY = args[0] === "--nonpay";
-if (NONPAY) args = args.slice(1);
+const ASM = args[0] === "--asm";
+if (NONPAY || ASM) args = args.slice(1);
 const dongs = args;
-if (!dongs.length) { console.error("사용: node hira_sync.js [--nonpay] <동이름> [동이름...]"); process.exit(1); }
+if (!dongs.length) { console.error("사용: node hira_sync.js [--nonpay|--asm] <동이름> [동이름...]"); process.exit(1); }
 
 // node http.get은 data.go.kr에서 간헐 타임아웃(IPv6 등) → curl(IPv4 우선)로 안정적 수신
 function fetchXML(url) {
@@ -52,6 +57,20 @@ function nonpayItems(ykiho) {
   return out.slice(0, 8);
 }
 
+// 적정성평가 등급 조회 (과잉진료 직결 약제 항목만 추출). 새 승인 키 사용.
+function asmGrades(ykiho) {
+  const EY = encodeURIComponent(ykiho);
+  const url = `http://apis.data.go.kr/B551182/hospAsmInfoService1/getHospAsmInfo1?serviceKey=${ASM_KEY}&pageNo=1&numOfRows=3&ykiho=${EY}`;
+  let xml; try { xml = execFileSync("curl", ["-s", "-4", "--max-time", "30", url], { encoding: "utf8", maxBuffer: 1 << 24 }); } catch { return null; }
+  const out = {};
+  for (const code of Object.keys(ASM_ITEMS)) {
+    const m = xml.match(new RegExp(`<asmGrd${code}>(.*?)</asmGrd${code}>`));
+    const v = m ? m[1].trim() : "";
+    if (v && v !== "등급제외" && /^[1-5]$/.test(v)) out[code] = parseInt(v, 10);
+  }
+  return Object.keys(out).length ? out : null;
+}
+
 (async () => {
   const stmts = [];
   for (const dong of dongs) {
@@ -66,7 +85,16 @@ function nonpayItems(ykiho) {
     }));
     if (!list.length) { console.error(`${dong}: 0건(스킵)`); continue; }
 
-    if (NONPAY) {
+    if (ASM) {
+      let cnt = 0;
+      for (const h of list) {
+        const g = asmGrades(h.ykiho);
+        if (!g) continue;
+        stmts.push(`INSERT OR REPLACE INTO hira_asm (ykiho,data,ts) VALUES ('${sqlEsc(h.ykiho)}', '${sqlEsc(JSON.stringify(g))}', ${Date.now()});`);
+        cnt++;
+      }
+      console.log(`${dong}: ${list.length}곳 중 적정성평가 ${cnt}곳 준비`);
+    } else if (NONPAY) {
       let cnt = 0;
       for (const h of list) {
         const np = nonpayItems(h.ykiho);
@@ -81,5 +109,5 @@ function nonpayItems(ykiho) {
       console.log(`${dong}: ${list.length}건 준비`);
     }
   }
-  pushD1(stmts, NONPAY ? "비급여" : dongs.length + "개 동");
+  pushD1(stmts, ASM ? "적정성평가" : NONPAY ? "비급여" : dongs.length + "개 동");
 })();

@@ -1221,12 +1221,17 @@ async function loadHira(h) {
         ${d.doctorCnt!=null?`<span style="font-size:11px;background:#fff;border:1px solid #cddde3;color:#2f5560;padding:3px 9px;border-radius:9999px;">👨‍⚕️ 의사 ${d.doctorCnt}명</span>`:''}
       </div>
       <div style="font-size:10px;color:#90a4ac;line-height:1.6;">위 정보 출처: 건강보험심사평가원(정부) 병원 자료 · ${asOf} 기준</div>
+      ${(d.asm && Object.keys(d.asm).length) ? `<div style="margin-top:9px;background:#fff;border:1px solid #cfe0d6;border-radius:10px;padding:9px 11px;">
+        <div style="font-size:11.5px;font-weight:700;color:#0f5c43;margin-bottom:6px;font-family:'Plus Jakarta Sans',sans-serif;">🩺 정부 적정성평가 (약제 과잉처방 정도)</div>
+        ${Object.entries(d.asm).map(([code,g])=>{const lab={'07':'감기 항생제 처방','08':'주사제 처방','09':'처방 약품 가짓수','23':'기관지염 항생제 처방'}[code]||code;const t=g<=2?['적정·과잉처방 적음','#0F6E56']:(g>=4?['많은 편·주의','#ba1a1a']:['보통','#7a5a12']);return `<div style="display:flex;justify-content:space-between;gap:8px;font-size:11.5px;line-height:1.75;"><span>${lab}</span><span style="font-weight:700;color:${t[1]};white-space:nowrap;">${g}등급 · ${t[0]}</span></div>`;}).join('')}
+        <div style="font-size:10px;color:#9aab9f;margin-top:5px;line-height:1.5;">1등급=적정(과잉처방 적음) ~ 5등급=하위 · 정부 적정성평가 결과</div>
+      </div>` : ''}
       ${(d.nonpay && d.nonpay.length) ? `<div style="margin-top:9px;background:#fff;border:1px solid #e7ddc6;border-radius:10px;padding:9px 11px;">
         <div style="font-size:11.5px;font-weight:700;color:#7a5a12;margin-bottom:6px;font-family:'Plus Jakarta Sans',sans-serif;">💰 비급여 진료비 (정부 공개·환자 부담)</div>
         ${d.nonpay.slice(0,4).map(it=>`<div style="display:flex;justify-content:space-between;gap:8px;font-size:11.5px;color:#5a4a2a;line-height:1.7;"><span style="flex:1;">${esc((it.n||'').split('/').slice(1).join(' ').trim()||it.n)}</span><span style="font-weight:700;white-space:nowrap;">${Number(it.p).toLocaleString()}원</span></div>`).join("")}
         <div style="font-size:10px;color:#a99a70;margin-top:5px;line-height:1.5;">병원이 정부에 신고한 가격 · 비싸면 과잉진료·바가지 가능성 참고용 (가격 높은 항목 순)</div>
       </div>` : ''}
-      <div style="font-size:10.5px;color:#876d2e;background:#fff8e8;border:1px solid #f0e2c0;border-radius:8px;padding:7px 9px;margin-top:7px;line-height:1.5;">ℹ️ 아직 못 보여드리는 것: ‘이 병원이 <b>과잉진료를 하는지</b>’를 더 직접 보여주는 지표(불필요한 처방 통계·정부 적정성평가·행정처분 이력)는 <b>준비 중</b>이에요.</div>
+      <div style="font-size:10.5px;color:#876d2e;background:#fff8e8;border:1px solid #f0e2c0;border-radius:8px;padding:7px 9px;margin-top:7px;line-height:1.5;">ℹ️ <b>행정처분·현지조사 이력</b>은 아직 준비 중이에요(별도 데이터). 위 적정성평가·비급여는 정부 공개 자료입니다.</div>
     </div>`;
   } catch (e) {}
 }
