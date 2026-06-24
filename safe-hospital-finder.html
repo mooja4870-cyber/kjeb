@@ -1083,6 +1083,18 @@ const tc = (id) => {
 };
 
 // ── 병원 목록 렌더 ────────────────────────────────────────────────
+// 한눈에 보는 종합 의견 (쉬운말 · 주변 문구보다 큰 글씨). 등급/후기 근거로 자동 생성, 단정하지 않음.
+function opinionHTML(h) {
+  const an = h.an || {}, st = an.st;
+  let icon, txt, bg, bd, tx;
+  if (an.userOnly) { icon = "📝"; txt = "이웃 <b>제보로 등록</b>된 곳이에요. 포털 후기는 아직 적어 참고만 하세요."; bg = "#fff0f3"; bd = "#f0d9e0"; tx = "#7a3b50"; }
+  else if (st === "trusted") { icon = "👍"; txt = "여러 후기에서 <b>‘과잉진료 없이 양심적’</b>이라는 평이 확인됐고, 정부 데이터로 병원 신원도 확인된 곳이에요."; bg = "#e3f3ec"; bd = "#bfe3d3"; tx = "#0e3a2c"; }
+  else if (st === "clean") { icon = "🙂"; txt = "후기는 대체로 좋지만 대부분 <b>‘친절·만족’ 같은 일반 평</b>이에요. ‘과잉진료 없음’을 직접 말한 후기는 적습니다."; bg = "#e8f3fb"; bd = "#cfe3f5"; tx = "#0f3a5c"; }
+  else if (st === "caution") { icon = "⚖️"; txt = "좋다·아쉽다 후기가 <b>비슷하게 섞여</b> 있어요. 여러 곳을 비교해 보세요."; bg = "#fff6e6"; bd = "#f0e2c0"; tx = "#7a5a12"; }
+  else return "";
+  return `<div style="background:${bg};border:1px solid ${bd};border-radius:12px;padding:11px 13px;margin-bottom:10px;"><div style="font-size:15px;line-height:1.55;font-weight:600;color:${tx};font-family:'Plus Jakarta Sans',sans-serif;">${icon} ${txt}</div></div>`;
+}
+
 function rl() {
   const ls = gf(), sp = SP.find(s=>s.id===ss);
   const el = document.getElementById("hl");
@@ -1109,6 +1121,8 @@ function rl() {
             <div style="font-size:24px;font-weight:800;color:#526069;font-family:'Plus Jakarta Sans',sans-serif;">${h.an.total}건</div>
           </div>
         </div>
+
+        ${opinionHTML(h)}
 
         <div id="hira-${h.id}" style="margin-bottom:10px;"></div>
 
