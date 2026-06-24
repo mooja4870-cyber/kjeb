@@ -1197,14 +1197,17 @@ async function loadHira(h) {
     if (!d || !d.matched) return; // 미매칭 → 아무것도 표기하지 않음(중립)
     const asOf = d.asOf ? new Date(d.asOf).toLocaleDateString("ko-KR") : "-";
     const conf = d.confidence === "높음" ? "#0F6E56" : "#854F0B";
+    const confTxt = d.confidence === "높음" ? "같은 병원 맞음 확인" : "같은 병원으로 추정";
     box.innerHTML = `<div style="background:#eef4f6;border:1px solid #d7e3e8;border-radius:12px;padding:11px 13px;">
-      <div style="font-size:11.5px;font-weight:700;color:#2f5560;margin-bottom:7px;font-family:'Plus Jakarta Sans',sans-serif;">🏛️ 심평원 객관정보 <span style="font-weight:600;color:${conf};">· 요양기호 일치 신뢰 ${esc(d.confidence)}</span></div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;">
-        ${d.clNm?`<span style="font-size:11px;background:#fff;border:1px solid #cddde3;color:#2f5560;padding:3px 9px;border-radius:9999px;">종별 ${esc(d.clNm)}</span>`:''}
-        ${d.opYears!=null?`<span style="font-size:11px;background:#fff;border:1px solid #cddde3;color:#2f5560;padding:3px 9px;border-radius:9999px;">운영 ${d.opYears}년차(${esc(d.estbYear||'')})</span>`:''}
-        ${d.doctorCnt!=null?`<span style="font-size:11px;background:#fff;border:1px solid #cddde3;color:#2f5560;padding:3px 9px;border-radius:9999px;">등록 의사 ${d.doctorCnt}명</span>`:''}
+      <div style="font-size:11.5px;font-weight:700;color:#2f5560;margin-bottom:3px;font-family:'Plus Jakarta Sans',sans-serif;">🏛️ 정부 공식 데이터(심평원)로 확인한 정보</div>
+      <div style="font-size:10.5px;color:${conf};margin-bottom:8px;font-family:'Plus Jakarta Sans',sans-serif;">✓ ${esc(confTxt)} — 화면의 이 병원이 정부 등록 병원과 일치</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:7px;">
+        ${d.clNm?`<span style="font-size:11px;background:#fff;border:1px solid #cddde3;color:#2f5560;padding:3px 9px;border-radius:9999px;">🏥 ${esc(d.clNm)}</span>`:''}
+        ${d.opYears!=null?`<span style="font-size:11px;background:#fff;border:1px solid #cddde3;color:#2f5560;padding:3px 9px;border-radius:9999px;">📅 ${esc(d.estbYear||'')}년 개원 · ${d.opYears}년째 운영</span>`:''}
+        ${d.doctorCnt!=null?`<span style="font-size:11px;background:#fff;border:1px solid #cddde3;color:#2f5560;padding:3px 9px;border-radius:9999px;">👨‍⚕️ 의사 ${d.doctorCnt}명</span>`:''}
       </div>
-      <div style="font-size:10px;color:#90a4ac;line-height:1.5;">출처: ${esc(d.source||'심평원')} · 기준시점 ${asOf}${d.distM!=null?` · 좌표오차 ${d.distM}m`:''}<br>※ 과잉진료 직결 지표(처방률·비급여·적정성·행정처분)는 추가 데이터셋 연동 예정</div>
+      <div style="font-size:10px;color:#90a4ac;line-height:1.6;">위 정보 출처: 건강보험심사평가원(정부) 병원 자료 · ${asOf} 기준</div>
+      <div style="font-size:10.5px;color:#876d2e;background:#fff8e8;border:1px solid #f0e2c0;border-radius:8px;padding:7px 9px;margin-top:7px;line-height:1.5;">ℹ️ 아직 못 보여드리는 것: ‘이 병원이 <b>과잉진료를 하는지</b>’를 직접 보여주는 지표(불필요한 처방·비급여 비중·정부 평가·처벌 이력)는 <b>준비 중</b>이에요.</div>
     </div>`;
   } catch (e) {}
 }
