@@ -543,7 +543,7 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(()=>{}));
 }
 const API = window.location.hostname === "localhost" ? window.location.origin : "/api";
-const FORMULA_VER = "reviewer-v1"; // 추천 산식 버전(근거 제시·감사용). server.js와 동일하게 유지.
+const FORMULA_VER = "reviewer-v2"; // 추천 산식 버전(근거 제시·감사용). server.js와 동일하게 유지.
 
 // 네트워크 실패 시 null 반환(콜드스타트 구분용), 성공 시 배열(빈 배열 포함)
 async function napi(q, n=5) {
@@ -754,8 +754,8 @@ const SC = {
 
 // 병원 등급별 배지 맵 (S/A/B/D 대신 군/그룹 표현으로 순화)
 const GR = {
-  S: { l:"우수", e:"🌟", bg:"#d4e6e5", bd:"#0F6E56", tx:"#04342C", desc:"(실제 추천 후기 다수·아쉬움 없음)" },
-  A: { l:"양호", e:"✅", bg:"#e8f5ff", bd:"#185FA5", tx:"#042C53", desc:"(추천 후기가 아쉬움보다 우세)" },
+  S: { l:"우수", e:"🌟", bg:"#d4e6e5", bd:"#0F6E56", tx:"#04342C", desc:"(과잉진료 없음 직결 후기 확인·표본 충분)" },
+  A: { l:"양호", e:"✅", bg:"#e8f5ff", bd:"#185FA5", tx:"#042C53", desc:"(긍정 후기 우세·일반 만족도)" },
   B: { l:"참고", e:"⚠️", bg:"#fff3e0", bd:"#854F0B", tx:"#412402", desc:"(추천·아쉬움 후기 혼재)" },
   D: { l:"신중", e:"🚫", bg:"#ffdad6", bd:"#A32D2D", tx:"#501313", desc:"(아쉬운 후기 우세)" },
   none: { l:"후기 없음", e:"🔍", bg:"#efeded", bd:"#7e7577", tx:"#4d4547", desc:"(실제 후기 데이터 없음)" }
@@ -800,15 +800,18 @@ async function fetchMentions(name) {
   } catch(e) { return { pos:0, neg:0, matched:0, samples:[] }; }
 }
 
-// 실제 긍정/부정 언급 수만으로 등급 산정 (가중치·난수 없음)
+// reviewer-v2 (Phase B 검증 근거): 최소표본 matched>=10, S(우수)는 과잉진료 직결근거 ot>=1 필수, 광고오염 가드
+const MIN_MATCHED = 10;
 function gradeFromMentions(an) {
-  const pos = an.pc, neg = an.nc;
+  const pos = an.pc, neg = an.nc, ot = an.ot || 0, ad = an.adCount || 0, matched = an.total || 0;
   an.s = pos - neg; // 순(純) 긍정 언급 수
-  if (pos === 0 && neg === 0)      { an.st = "unknown"; an.gr = "none"; }
-  else if (neg > pos)              { an.st = "warning"; an.gr = "D"; }
-  else if (pos >= 3 && neg === 0)  { an.st = "trusted"; an.gr = "S"; }
-  else if (pos > neg)              { an.st = "clean";   an.gr = "A"; }
-  else                            { an.st = "caution"; an.gr = "B"; }
+  if (matched < MIN_MATCHED)            { an.st = "unknown"; an.gr = "none"; return; } // 표본 부족 → 정보 부족(보류)
+  if (neg > pos)                        { an.st = "warning"; an.gr = "D"; return; }    // 부정 우세 → 미표시
+  if (pos > 0 && ad >= pos)             { an.st = "unknown"; an.gr = "none"; return; } // 광고오염 → 보류
+  if (pos === 0 && neg === 0)           { an.st = "unknown"; an.gr = "none"; return; }
+  if (pos >= 3 && neg === 0 && ot >= 1) { an.st = "trusted"; an.gr = "S"; return; }    // 우수: 과잉진료 직결 근거 필수
+  if (pos > neg)                        { an.st = "clean";   an.gr = "A"; return; }    // 양호: 후기 긍정 우세
+  an.st = "caution"; an.gr = "B";
 }
 
 // ── 착한병원 제보 ─────────────────────────────────────────────────
@@ -1317,6 +1320,7 @@ async function doSearch() {
     const m = await fetchMentions(h.name);
     h.an.pc = m.pos || 0;
     h.an.nc = m.neg || 0;
+    h.an.ot = m.ot || 0;
     h.an.total = m.matched || 0;
     h.an.adCount = m.adCount || 0;
     h.an.samples = m.samples || [];
