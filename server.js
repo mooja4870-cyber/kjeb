@@ -60,7 +60,7 @@ const PORT = process.env.PORT || 4156;
 // 단, 착한병원 제보(/recommend·/recommendations)는 프록시 제외 → 로컬 서버 내부 DB(user_recos)에 저장·관리.
 // 완전 로컬(오프라인) 처리를 원하면 DATA_PROXY=off 로 실행.
 const DATA_PROXY = process.env.DATA_PROXY === "off" ? null : (process.env.DATA_PROXY || "https://kjeb.pages.dev/api");
-const PROXY_PATHS = ["/search", "/mentions", "/revgeo"];
+const PROXY_PATHS = ["/search", "/mentions", "/revgeo", "/hira"];
 // 시크릿은 환경변수 우선(배포 시 Render에 등록). 미설정 시 로컬 개발용 폴백.
 const NAVER_CLIENT_ID = process.env.NAVER_CLIENT_ID || "PqOwK5a2oVVs6zmEOjWm";
 const NAVER_CLIENT_SECRET = process.env.NAVER_CLIENT_SECRET || "SjK8rv8Nd7";

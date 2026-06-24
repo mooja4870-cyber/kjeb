@@ -1107,6 +1107,8 @@ function rl() {
           </div>
         </div>
 
+        <div id="hira-${h.id}" style="margin-bottom:10px;"></div>
+
         <div style="font-size:10.5px;color:#7e7577;line-height:1.5;margin-bottom:10px;">📊 출처: 네이버 블로그·카페·지식인 실제 글 기준 (병원명+평가 키워드 자동 집계 · 오분류 가능). 직접 확인 권장.${h.an.adCount>0?`<br><span style="color:#b07d2e;">* 광고·협찬/체험단 의심 ${h.an.adCount}건은 추천 집계에서 제외했습니다.</span>`:''}</div>
 
         ${posS.length ? `<div style="background:#f0f8f4;border-radius:12px;padding:10px 12px;margin-bottom:8px;">
@@ -1168,6 +1170,40 @@ function rl() {
       <div style="margin-top:12px;padding-top:12px;border-top:1px solid #f5f3f3;${x?'display:block':'display:none'}">${dt}</div>
     </div>`;
   }).join("");
+  const exp = ls.find(h => h.id === eid);
+  if (exp) loadHira(exp);
+}
+
+// [Phase C] 펼친 카드에 심평원(HIRA) 요양기호 검증 객관정보 주입 (고신뢰 매칭 시에만)
+const _hiraCache = {};
+function curDong() {
+  const toks = (lF || "").split(" ").filter(Boolean);
+  return toks.reverse().find(t => /(동|읍|면)$/.test(t)) || toks[0] || "";
+}
+async function loadHira(h) {
+  const box = document.getElementById("hira-" + h.id);
+  if (!box || box.dataset.done) return;
+  box.dataset.done = "1";
+  if (h.an && h.an.userOnly) return; // 사용자 제보 전용 병원은 매칭 대상 아님
+  const dong = curDong();
+  if (!dong) return;
+  try {
+    const ck = h.name + "|" + dong;
+    let d = _hiraCache[ck];
+    if (!d) { d = await (await fetch(`${API}/hira?name=${encodeURIComponent(h.name)}&dong=${encodeURIComponent(dong)}&lat=${h.lat||""}&lng=${h.lng||""}`)).json(); _hiraCache[ck] = d; }
+    if (!d || !d.matched) return; // 미매칭 → 아무것도 표기하지 않음(중립)
+    const asOf = d.asOf ? new Date(d.asOf).toLocaleDateString("ko-KR") : "-";
+    const conf = d.confidence === "높음" ? "#0F6E56" : "#854F0B";
+    box.innerHTML = `<div style="background:#eef4f6;border:1px solid #d7e3e8;border-radius:12px;padding:11px 13px;">
+      <div style="font-size:11.5px;font-weight:700;color:#2f5560;margin-bottom:7px;font-family:'Plus Jakarta Sans',sans-serif;">🏛️ 심평원 객관정보 <span style="font-weight:600;color:${conf};">· 요양기호 일치 신뢰 ${esc(d.confidence)}</span></div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;">
+        ${d.clNm?`<span style="font-size:11px;background:#fff;border:1px solid #cddde3;color:#2f5560;padding:3px 9px;border-radius:9999px;">종별 ${esc(d.clNm)}</span>`:''}
+        ${d.opYears!=null?`<span style="font-size:11px;background:#fff;border:1px solid #cddde3;color:#2f5560;padding:3px 9px;border-radius:9999px;">운영 ${d.opYears}년차(${esc(d.estbYear||'')})</span>`:''}
+        ${d.doctorCnt!=null?`<span style="font-size:11px;background:#fff;border:1px solid #cddde3;color:#2f5560;padding:3px 9px;border-radius:9999px;">등록 의사 ${d.doctorCnt}명</span>`:''}
+      </div>
+      <div style="font-size:10px;color:#90a4ac;line-height:1.5;">출처: ${esc(d.source||'심평원')} · 기준시점 ${asOf}${d.distM!=null?` · 좌표오차 ${d.distM}m`:''}<br>※ 과잉진료 직결 지표(처방률·비급여·적정성·행정처분)는 추가 데이터셋 연동 예정</div>
+    </div>`;
+  } catch (e) {}
 }
 
 // ── 검색 ─────────────────────────────────────────────────────────
