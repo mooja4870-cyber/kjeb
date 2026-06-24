@@ -22,6 +22,22 @@ db.run(`CREATE TABLE IF NOT EXISTS user_recos (
   reasons TEXT, comment TEXT, ip TEXT, ts INTEGER
 )`);
 
+// [Phase A] 병원 정보 정정·이의제기 창구 (병원 측 신고) — 내부 관리용
+db.run(`CREATE TABLE IF NOT EXISTS data_corrections (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT, region TEXT, kind TEXT, message TEXT, contact TEXT,
+  status TEXT DEFAULT 'open', ip TEXT, ts INTEGER
+)`);
+
+// [Phase A] 추천 판정 감사 로그 골격 (어떤 데이터·시점·산식으로 판정했는지 기록 — Phase C/D에서 객관지표 채움)
+db.run(`CREATE TABLE IF NOT EXISTS reco_audit (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT, formula_ver TEXT, source TEXT, evidence TEXT, decision TEXT, as_of INTEGER, ts INTEGER
+)`);
+
+// 추천 산식 버전 (근거 제시·감사용). 변경 시 갱신.
+const FORMULA_VER = "reviewer-v1";
+
 // 실제 후기 감성 키워드 (사람들이 실제로 남기는 표현 기반)
 const POS_KW = ["착한","양심","과잉진료 없","과잉진료없","과잉 없","바가지 없","덤터기 없","강요 없","강요 안","강요하지 않","친절","꼼꼼","세심","자연치아","보존치료","살려주","안 아프게","안아프게","정직","믿고","믿을 만","재방문","단골","추천","만족","최고","좋았","좋아요","good"];
 const NEG_KW = ["과잉진료","과잉 진료","바가지","덤터기","강요","불친절","사기","돈만","불필요한 치료","과다청구","불만","최악","후회","다신 안","두 번 다시","비추","호구","뜯","폭리"];
@@ -140,6 +156,41 @@ const server = http.createServer((req, res) => {
         if (r.comment) map[key].comments.push(r.comment);
       });
       sendJson({ items: Object.values(map) });
+    });
+    return;
+  }
+
+  // [Phase A] 병원 정보 정정·이의제기 접수 (POST) — 내부 DB에 저장
+  if (req.method === "POST" && parsed.pathname === "/correction") {
+    let body = "";
+    req.on("data", c => { body += c; if (body.length > 1e5) req.destroy(); });
+    req.on("end", () => {
+      const sendJson = obj => { res.writeHead(obj.error ? 400 : 200, { "Content-Type": "application/json; charset=utf-8" }); res.end(JSON.stringify(obj)); };
+      let d; try { d = JSON.parse(body); } catch { d = {}; }
+      const name = stripTag(d.name || "").trim().slice(0, 80);
+      const region = stripTag(d.region || "").trim().slice(0, 80);
+      const kind = stripTag(d.kind || "").trim().slice(0, 30);
+      const message = stripTag(d.message || "").trim().slice(0, 600);
+      const contact = stripTag(d.contact || "").trim().slice(0, 80);
+      const ip = (req.headers["x-forwarded-for"] || req.socket.remoteAddress || "").split(",")[0].trim();
+      if (!name || !message) return sendJson({ error: "병원명과 정정 내용은 필수입니다." });
+      db.get(`SELECT COUNT(*) AS c FROM data_corrections WHERE ip=? AND ts > ?`, [ip, Date.now() - 60000], (e1, row) => {
+        if (!e1 && row && row.c >= 3) return sendJson({ error: "잠시 후 다시 시도해주세요." });
+        db.run(`INSERT INTO data_corrections (name,region,kind,message,contact,ip,ts) VALUES (?,?,?,?,?,?,?)`,
+          [name, region, kind, message, contact, ip, Date.now()], function (e2) {
+            if (e2) return sendJson({ error: "접수에 실패했습니다." });
+            sendJson({ ok: true, id: this.lastID });
+          });
+      });
+    });
+    return;
+  }
+
+  // [Phase A] 정정·이의제기 접수 목록 (내부 관리용)
+  if (parsed.pathname === "/corrections") {
+    const sendJson = obj => { res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" }); res.end(JSON.stringify(obj)); };
+    db.all(`SELECT id,name,region,kind,message,contact,status,ts FROM data_corrections ORDER BY ts DESC LIMIT 500`, [], (err, rows) => {
+      sendJson({ items: err ? [] : (rows || []), formula_ver: FORMULA_VER });
     });
     return;
   }
