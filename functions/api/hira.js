@@ -52,11 +52,20 @@ export async function onRequestGet(context) {
 
   const estbYear = (c.estb || "").slice(0, 4);
   const opYears = estbYear ? (new Date().getFullYear() - parseInt(estbYear, 10)) : null;
+
+  // 비급여 진료비 (요양기호 기준, 사전 동기화된 D1 캐시)
+  let nonpay = null, nonpayAsOf = null;
+  try {
+    const r = await env.DB.prepare(`SELECT data, ts FROM hira_nonpay WHERE ykiho=?`).bind(c.ykiho).first();
+    if (r) { nonpay = JSON.parse(r.data); nonpayAsOf = r.ts; }
+  } catch {}
+
   return json({
     matched: true, confidence,
     ykiho: c.ykiho, hiraName: c.name, hiraAddr: c.addr,
     doctorCnt: c.dr, estbYear: estbYear || null, opYears, clNm: c.cl,
     distM: isFinite(dist) ? Math.round(dist) : null,
+    nonpay, nonpayAsOf,
     source: "건강보험심사평가원 병원기본정보(hospInfoServicev2)", asOf,
   });
 }

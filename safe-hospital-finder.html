@@ -1221,7 +1221,12 @@ async function loadHira(h) {
         ${d.doctorCnt!=null?`<span style="font-size:11px;background:#fff;border:1px solid #cddde3;color:#2f5560;padding:3px 9px;border-radius:9999px;">👨‍⚕️ 의사 ${d.doctorCnt}명</span>`:''}
       </div>
       <div style="font-size:10px;color:#90a4ac;line-height:1.6;">위 정보 출처: 건강보험심사평가원(정부) 병원 자료 · ${asOf} 기준</div>
-      <div style="font-size:10.5px;color:#876d2e;background:#fff8e8;border:1px solid #f0e2c0;border-radius:8px;padding:7px 9px;margin-top:7px;line-height:1.5;">ℹ️ 아직 못 보여드리는 것: ‘이 병원이 <b>과잉진료를 하는지</b>’를 직접 보여주는 지표(불필요한 처방·비급여 비중·정부 평가·처벌 이력)는 <b>준비 중</b>이에요.</div>
+      ${(d.nonpay && d.nonpay.length) ? `<div style="margin-top:9px;background:#fff;border:1px solid #e7ddc6;border-radius:10px;padding:9px 11px;">
+        <div style="font-size:11.5px;font-weight:700;color:#7a5a12;margin-bottom:6px;font-family:'Plus Jakarta Sans',sans-serif;">💰 비급여 진료비 (정부 공개·환자 부담)</div>
+        ${d.nonpay.slice(0,4).map(it=>`<div style="display:flex;justify-content:space-between;gap:8px;font-size:11.5px;color:#5a4a2a;line-height:1.7;"><span style="flex:1;">${esc((it.n||'').split('/').slice(1).join(' ').trim()||it.n)}</span><span style="font-weight:700;white-space:nowrap;">${Number(it.p).toLocaleString()}원</span></div>`).join("")}
+        <div style="font-size:10px;color:#a99a70;margin-top:5px;line-height:1.5;">병원이 정부에 신고한 가격 · 비싸면 과잉진료·바가지 가능성 참고용 (가격 높은 항목 순)</div>
+      </div>` : ''}
+      <div style="font-size:10.5px;color:#876d2e;background:#fff8e8;border:1px solid #f0e2c0;border-radius:8px;padding:7px 9px;margin-top:7px;line-height:1.5;">ℹ️ 아직 못 보여드리는 것: ‘이 병원이 <b>과잉진료를 하는지</b>’를 더 직접 보여주는 지표(불필요한 처방 통계·정부 적정성평가·행정처분 이력)는 <b>준비 중</b>이에요.</div>
     </div>`;
   } catch (e) {}
 }
