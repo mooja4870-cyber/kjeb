@@ -258,9 +258,10 @@
   </div>
 
   <script>
-    // PWA 서비스워커 등록
+    // 서비스워커 미사용(옛 캐시 강제 제거): 기존 SW가 있으면 등록 해제 + 캐시 삭제
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(()=>{}));
+      navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(()=>{});
+      if (window.caches) caches.keys().then(ks => ks.forEach(k => caches.delete(k))).catch(()=>{});
     }
     // FAQ Accordion
     document.querySelectorAll('.faq-question').forEach(question => {
