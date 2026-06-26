@@ -5,7 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="color-scheme" content="light">
 <meta name="theme-color" content="#03C75A">
-<style>:root{color-scheme:light;}</style>
+<style>
+  :root{color-scheme:light;}
+  /* 다크 미디어쿼리를 직접 선언해 크롬/웹뷰의 '강제 다크 자동반전'을 끈다(라이트 유지) */
+  @media (prefers-color-scheme: dark){
+    :root{color-scheme:light;}
+    html,body{background:#fbf9f8 !important;color:#1b1c1c !important;-webkit-filter:none !important;filter:none !important;}
+  }
+</style>
 <title>동네 병원 후기 분석기</title>
 <link rel="manifest" href="/manifest.json">
 <meta name="mobile-web-app-capable" content="yes">

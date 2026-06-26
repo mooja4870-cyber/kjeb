@@ -1,5 +1,5 @@
 // sw.js — 착한병원 찾기 서비스워커 (앱 셸 캐시 + 설치 가능 조건 충족)
-const CACHE = "kjeb-v2";
+const CACHE = "kjeb-v3";
 const ASSETS = [
   "/index.html",
   "/index.css",

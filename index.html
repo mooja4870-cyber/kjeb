@@ -5,7 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="color-scheme" content="light">
   <meta name="theme-color" content="#03C75A">
-  <style>:root{color-scheme:light;}</style>
+  <style>
+    :root{color-scheme:light;}
+    /* 다크 미디어쿼리를 직접 선언해 크롬/웹뷰의 '강제 다크 자동반전'을 끈다(라이트 유지) */
+    @media (prefers-color-scheme: dark){
+      :root{color-scheme:light;}
+      html,body{background:#ffffff !important;color:#111 !important;-webkit-filter:none !important;filter:none !important;}
+    }
+  </style>
   <title>안심 병원 찾기 - 과잉진료 없는 병원 탐색</title>
   <meta name="description" content="우리 동네 양심 치과, 안심하고 갈 수 있는 병원을 30초 만에 찾아보세요. 환자경험 빅데이터 기반 우수 병원 추천 서비스.">
   
