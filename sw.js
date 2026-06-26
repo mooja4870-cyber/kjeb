@@ -1,5 +1,7 @@
-// sw.js — 착한병원 찾기 서비스워커 (앱 셸 캐시 + 설치 가능 조건 충족)
-const CACHE = "kjeb-v3";
+// sw.js — 착한병원 찾기 서비스워커
+// v4: 강제 다크 수정본이 확실히 반영되도록 HTML/CSS/JS를 '네트워크 우선'으로,
+//     활성화 시 모든 옛 캐시를 삭제한다. (옛 화면 잔존 방지)
+const CACHE = "kjeb-v4";
 const ASSETS = [
   "/index.html",
   "/index.css",
@@ -17,7 +19,7 @@ self.addEventListener("install", (e) => {
 self.addEventListener("activate", (e) => {
   e.waitUntil(
     caches.keys()
-      .then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then((ks) => Promise.all(ks.map((k) => caches.delete(k)))) // 모든 옛 캐시 삭제
       .then(() => self.clients.claim())
   );
 });
@@ -27,12 +29,12 @@ self.addEventListener("fetch", (e) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   // 동적 API는 항상 네트워크(캐시 금지)
-  if (/\/(search|mentions|recommend|recommendations|revgeo)\b/.test(url.pathname)) return;
-  // HTML 문서는 network-first (페이지 갱신 즉시 반영, 오프라인 시 캐시 폴백)
-  const isDoc = req.mode === "navigate" || url.pathname.endsWith(".html") || url.pathname === "/";
-  if (isDoc) {
+  if (/\/(search|mentions|recommend|recommendations|revgeo|hira)\b/.test(url.pathname)) return;
+  // HTML·CSS·JS는 네트워크 우선(항상 최신), 실패 시에만 캐시 폴백
+  const isShell = req.mode === "navigate" || /\.(html|css|js)$/.test(url.pathname) || url.pathname === "/";
+  if (isShell) {
     e.respondWith(
-      fetch(req).then((res) => {
+      fetch(req, { cache: "no-store" }).then((res) => {
         const copy = res.clone();
         caches.open(CACHE).then((c) => c.put(req, copy));
         return res;
@@ -40,6 +42,6 @@ self.addEventListener("fetch", (e) => {
     );
     return;
   }
-  // 기타 정적 자원은 캐시 우선, 없으면 네트워크
+  // 이미지 등은 캐시 우선
   e.respondWith(caches.match(req).then((r) => r || fetch(req)));
 });
