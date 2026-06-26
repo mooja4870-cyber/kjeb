@@ -1353,7 +1353,8 @@ async function doSearch() {
   document.getElementById("la").style.display = "block";
   document.getElementById("ltt").textContent = `실제 후기 분석 중... (${hs.length}곳)`;
   const recos = await fetchRecos();
-  await Promise.all(hs.map(async h => {
+  // 동시 4개로 제한 — 한꺼번에 25개 호출 시 네이버가 일부를 throttle(0건)→등급 탈락→클릭마다 개수 출렁. 제한하면 모두 성공·캐시되어 결과가 결정적.
+  await runPool(hs, 4, async h => {
     const m = await fetchMentions(h.name);
     h.an.pc = m.pos || 0;
     h.an.nc = m.neg || 0;
@@ -1372,7 +1373,7 @@ async function doSearch() {
       h.an.s += ur.count; // 사용자 제보도 긍정 근거로 정렬 가산
       if (h.an.st === "unknown") { h.an.st = "clean"; h.an.gr = "A"; } // 후기 없어도 사용자 추천이면 노출
     } else { h.an.userCount = 0; }
-  }));
+  });
   document.getElementById("la").style.display = "none";
 
   // 네이버에 안 잡혔지만 사용자 제보가 있는 병원도 결과에 노출 (데이터 축적 취지)
