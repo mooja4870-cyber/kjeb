@@ -11,9 +11,10 @@ export async function onRequestGet(context) {
 
   if (!env.DB) return json({ items: [] });
 
-  let sql = `SELECT name, region, specialty, reasons, comment, ts FROM user_recos`;
+  // 관리자 승인(status='approved')된 제보만 일반 사용자에게 노출
+  let sql = `SELECT name, region, specialty, reasons, comment, ts FROM user_recos WHERE status='approved'`;
   const params = [];
-  if (region) { sql += ` WHERE region LIKE ?`; params.push(`%${region}%`); }
+  if (region) { sql += ` AND region LIKE ?`; params.push(`%${region}%`); }
   sql += ` ORDER BY ts DESC LIMIT 500`;
 
   try {

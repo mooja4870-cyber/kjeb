@@ -141,9 +141,9 @@ const server = http.createServer((req, res) => {
   if (parsed.pathname === "/recommendations") {
     const region = stripTag(parsed.query.region || "").trim();
     const sendJson = obj => { res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" }); res.end(JSON.stringify(obj)); };
-    let sql = `SELECT name, region, specialty, reasons, comment, ts FROM user_recos`;
+    let sql = `SELECT name, region, specialty, reasons, comment, ts FROM user_recos WHERE status='approved'`;
     const params = [];
-    if (region) { sql += ` WHERE region LIKE ?`; params.push(`%${region}%`); }
+    if (region) { sql += ` AND region LIKE ?`; params.push(`%${region}%`); }
     sql += ` ORDER BY ts DESC LIMIT 500`;
     db.all(sql, params, (err, rows) => {
       if (err || !rows) return sendJson({ items: [] });
@@ -192,6 +192,32 @@ const server = http.createServer((req, res) => {
     const sendJson = obj => { res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" }); res.end(JSON.stringify(obj)); };
     db.all(`SELECT id,name,region,kind,message,contact,status,ts FROM data_corrections ORDER BY ts DESC LIMIT 500`, [], (err, rows) => {
       sendJson({ items: err ? [] : (rows || []), formula_ver: FORMULA_VER });
+    });
+    return;
+  }
+
+  // [관리자] 제보 검증·승인 (비번은 환경변수 ADMIN_PASSWORD로 검증)
+  if (req.method === "POST" && parsed.pathname === "/admin") {
+    let body = "";
+    req.on("data", c => { body += c; if (body.length > 1e5) req.destroy(); });
+    req.on("end", () => {
+      const sendJson = (obj, code) => { res.writeHead(code || 200, { "Content-Type": "application/json; charset=utf-8" }); res.end(JSON.stringify(obj)); };
+      let d; try { d = JSON.parse(body); } catch { d = {}; }
+      const PW = process.env.ADMIN_PASSWORD || "";
+      if (!PW || d.password !== PW) return sendJson({ error: "인증 실패" }, 401);
+      const action = d.action || "list";
+      if (action === "list") {
+        db.all(`SELECT id,name,region,specialty,reasons,comment,ts FROM user_recos WHERE status IS NULL OR status='pending' ORDER BY ts DESC LIMIT 500`, [], (e, rows) => {
+          const pending = (rows || []).map(r => { let rs = []; try { rs = JSON.parse(r.reasons || "[]"); } catch {} return { id: r.id, name: r.name, region: r.region, specialty: r.specialty, reasons: rs, comment: r.comment, ts: r.ts }; });
+          db.get(`SELECT COUNT(*) AS c FROM user_recos WHERE status='approved'`, [], (e2, row) => sendJson({ ok: true, pending, approvedCount: row ? row.c : 0 }));
+        });
+      } else if (action === "approve") {
+        if (!d.id) return sendJson({ error: "id 필요" }, 400);
+        db.run(`UPDATE user_recos SET status='approved' WHERE id=?`, [d.id], e => sendJson(e ? { error: "실패" } : { ok: true }, e ? 500 : 200));
+      } else if (action === "reject") {
+        if (!d.id) return sendJson({ error: "id 필요" }, 400);
+        db.run(`DELETE FROM user_recos WHERE id=?`, [d.id], e => sendJson(e ? { error: "실패" } : { ok: true }, e ? 500 : 200));
+      } else sendJson({ error: "알 수 없는 action" }, 400);
     });
     return;
   }

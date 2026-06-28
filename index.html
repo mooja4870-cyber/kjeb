@@ -42,8 +42,9 @@
         <a href="#vision" class="nav-link">우리의 비전</a>
         <a href="#faq" class="nav-link">자주 묻는 질문</a>
       </nav>
-      <div>
+      <div style="display:flex;align-items:center;gap:8px;">
         <a href="safe-hospital-finder.html" class="btn-large btn-primary" style="padding: 10px 20px; font-size: 14px;">검색 시작</a>
+        <button onclick="openAdmin()" aria-label="설정" title="설정" style="background:none;border:none;cursor:pointer;font-size:22px;line-height:1;padding:6px;color:#777;">⚙️</button>
       </div>
     </div>
   </header>
@@ -63,11 +64,8 @@
         치과 갈 때마다 비용 폭탄 맞을까 두려우신가요? 보존치료(자연치아 살리기)를 우선하는 정직하고 양심적인 우수 병원을 지금 바로 내 위치 주변에서 찾아보세요.
       </p>
       <div class="hero-actions">
-        <a href="https://github.com/mooja4870-cyber/kjeb/raw/master/kjeb.apk?raw=true" class="btn-large btn-primary" download>
-          <span>📱 APK 다운로드</span>
-        </a>
         <a href="safe-hospital-finder.html" class="btn-large btn-secondary">
-          <span>웹으로 바로 검색</span>
+          <span>바로 검색</span>
           <span>⚡</span>
         </a>
       </div>
@@ -248,11 +246,8 @@
 
   <!-- Mobile Bottom Action Bar -->
   <div class="mobile-bottom-bar">
-    <a href="https://github.com/mooja4870-cyber/kjeb/raw/master/kjeb.apk?raw=true" class="btn-large btn-primary mobile-bottom-btn" download>
-      <span>📱 APK 다운로드</span>
-    </a>
     <a href="safe-hospital-finder.html" class="btn-large btn-secondary mobile-bottom-btn">
-      <span>웹으로 바로 검색</span>
+      <span>바로 검색</span>
       <span>⚡</span>
     </a>
   </div>
@@ -276,6 +271,76 @@
         }
       });
     });
+
+    // ── 관리자 모드 (제보 검증·승인) ──
+    const API = location.hostname === "localhost" ? location.origin : "/api";
+    let _adminPw = "";
+    function openAdmin() {
+      _adminPw = "";
+      document.getElementById("admPw").value = "";
+      document.getElementById("admGate").style.display = "block";
+      document.getElementById("admPanel").style.display = "none";
+      document.getElementById("admMsg").textContent = "";
+      document.getElementById("am").style.display = "flex";
+    }
+    function closeAdmin() { document.getElementById("am").style.display = "none"; }
+    async function adminCall(action, id) {
+      const r = await fetch(`${API}/admin`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: _adminPw, action, id }) });
+      if (r.status === 401) throw new Error("비밀번호가 올바르지 않습니다.");
+      return r.json();
+    }
+    async function adminLogin() {
+      _adminPw = document.getElementById("admPw").value;
+      const msg = document.getElementById("admMsg");
+      msg.style.color = "#ba1a1a"; msg.textContent = "확인 중...";
+      try {
+        const d = await adminCall("list");
+        msg.textContent = "";
+        document.getElementById("admGate").style.display = "none";
+        document.getElementById("admPanel").style.display = "block";
+        renderAdmin(d);
+      } catch (e) { msg.textContent = e.message || "인증 실패"; _adminPw = ""; }
+    }
+    function renderAdmin(d) {
+      const box = document.getElementById("admList");
+      document.getElementById("admStat").textContent = `미승인 ${d.pending.length}건 · 승인완료 ${d.approvedCount}건`;
+      if (!d.pending.length) { box.innerHTML = '<p style="color:#777;font-size:13px;text-align:center;padding:20px;">대기 중인 제보가 없습니다.</p>'; return; }
+      box.innerHTML = d.pending.map(p => `<div style="border:1px solid #eee;border-radius:10px;padding:10px 12px;margin-bottom:8px;">
+        <div style="font-weight:700;font-size:14px;">${esc(p.name)} <span style="font-size:12px;color:#888;font-weight:400;">${esc(p.specialty||"")} · ${esc(p.region||"")}</span></div>
+        <div style="font-size:12px;color:#555;margin:4px 0;">${(p.reasons||[]).map(esc).join(", ")}</div>
+        ${p.comment?`<div style="font-size:12px;color:#777;">“${esc(p.comment)}”</div>`:""}
+        <div style="margin-top:8px;display:flex;gap:6px;">
+          <button onclick="admAct('approve',${p.id})" style="flex:1;background:#0F6E56;color:#fff;border:none;border-radius:8px;padding:7px;font-size:13px;font-weight:700;cursor:pointer;">승인</button>
+          <button onclick="admAct('reject',${p.id})" style="flex:1;background:#fff;color:#ba1a1a;border:1px solid #f0c0c0;border-radius:8px;padding:7px;font-size:13px;font-weight:700;cursor:pointer;">거절(삭제)</button>
+        </div>
+      </div>`).join("");
+    }
+    async function admAct(action, id) {
+      try { await adminCall(action, id); const d = await adminCall("list"); renderAdmin(d); }
+      catch (e) { alert(e.message || "처리 실패"); }
+    }
+    function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
   </script>
+
+  <!-- ══ 관리자 모드 모달 ══ -->
+  <div id="am" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9999;align-items:center;justify-content:center;padding:20px;">
+    <div style="background:#fff;border-radius:16px;max-width:460px;width:100%;max-height:85vh;overflow:auto;padding:18px 20px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <h2 style="font-size:17px;font-weight:800;color:#1b1c1c;margin:0;">🔐 관리자 모드</h2>
+        <button onclick="closeAdmin()" style="background:none;border:none;font-size:22px;color:#888;cursor:pointer;">✕</button>
+      </div>
+      <div id="admGate">
+        <p style="font-size:13px;color:#666;margin-bottom:8px;">관리자 비밀번호를 입력하세요.</p>
+        <input id="admPw" type="password" placeholder="비밀번호" onkeydown="if(event.key==='Enter')adminLogin()" style="width:100%;padding:11px 12px;border:1.5px solid #d0c3c6;border-radius:10px;font-size:14px;outline:none;box-sizing:border-box;">
+        <button onclick="adminLogin()" style="width:100%;margin-top:10px;background:#516161;color:#fff;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;">입장</button>
+        <div id="admMsg" style="font-size:12px;text-align:center;margin-top:8px;"></div>
+      </div>
+      <div id="admPanel" style="display:none;">
+        <p style="font-size:12px;color:#888;margin-bottom:6px;">사용자 제보 검증 — <b>승인</b>해야 검색결과에 노출됩니다.</p>
+        <div id="admStat" style="font-size:12px;color:#516161;font-weight:700;margin-bottom:10px;"></div>
+        <div id="admList"></div>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
