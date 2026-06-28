@@ -19,15 +19,24 @@ export async function onRequestPost(context) {
   const action = d.action || "list";
   try {
     if (action === "list") {
-      // 미승인(pending) 제보 — 병원명별 집계
+      // 미승인(pending) 제보
       const { results } = await env.DB.prepare(
-        `SELECT id, name, region, specialty, reasons, comment, ts FROM user_recos WHERE status IS NULL OR status='pending' ORDER BY ts DESC LIMIT 500`
+        `SELECT id, name, region, specialty, reasons, comment, ts, ip FROM user_recos WHERE status IS NULL OR status='pending' ORDER BY ts DESC LIMIT 500`
       ).all();
+      // 자가홍보/도배 단서: IP별 총 제보 수 + 같은 병원명 제보 수
+      const ipCnt = {}, nameCnt = {};
+      try {
+        const a = await env.DB.prepare(`SELECT ip, COUNT(*) c FROM user_recos GROUP BY ip`).all();
+        (a.results || []).forEach(r => { ipCnt[r.ip] = r.c; });
+        const b = await env.DB.prepare(`SELECT name, COUNT(DISTINCT ip) c FROM user_recos GROUP BY name`).all();
+        (b.results || []).forEach(r => { nameCnt[r.name] = r.c; });
+      } catch {}
       const items = (results || []).map(r => {
         let reasons = []; try { reasons = JSON.parse(r.reasons || "[]"); } catch {}
-        return { id: r.id, name: r.name, region: r.region, specialty: r.specialty, reasons, comment: r.comment, ts: r.ts };
+        const ip = r.ip || "";
+        return { id: r.id, name: r.name, region: r.region, specialty: r.specialty, reasons, comment: r.comment, ts: r.ts,
+          ip, ipReports: ipCnt[ip] || 1, distinctReporters: nameCnt[r.name] || 1 };
       });
-      // 승인 완료 건수도 함께
       const appr = await env.DB.prepare(`SELECT COUNT(*) AS c FROM user_recos WHERE status='approved'`).first();
       return json({ ok: true, pending: items, approvedCount: appr ? appr.c : 0 });
     }

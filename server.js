@@ -207,9 +207,15 @@ const server = http.createServer((req, res) => {
       if (!PW || d.password !== PW) return sendJson({ error: "인증 실패" }, 401);
       const action = d.action || "list";
       if (action === "list") {
-        db.all(`SELECT id,name,region,specialty,reasons,comment,ts FROM user_recos WHERE status IS NULL OR status='pending' ORDER BY ts DESC LIMIT 500`, [], (e, rows) => {
-          const pending = (rows || []).map(r => { let rs = []; try { rs = JSON.parse(r.reasons || "[]"); } catch {} return { id: r.id, name: r.name, region: r.region, specialty: r.specialty, reasons: rs, comment: r.comment, ts: r.ts }; });
-          db.get(`SELECT COUNT(*) AS c FROM user_recos WHERE status='approved'`, [], (e2, row) => sendJson({ ok: true, pending, approvedCount: row ? row.c : 0 }));
+        db.all(`SELECT ip, COUNT(*) c FROM user_recos GROUP BY ip`, [], (ea, iprows) => {
+          const ipCnt = {}; (iprows || []).forEach(r => { ipCnt[r.ip] = r.c; });
+          db.all(`SELECT name, COUNT(DISTINCT ip) c FROM user_recos GROUP BY name`, [], (eb, nrows) => {
+            const nameCnt = {}; (nrows || []).forEach(r => { nameCnt[r.name] = r.c; });
+            db.all(`SELECT id,name,region,specialty,reasons,comment,ts,ip FROM user_recos WHERE status IS NULL OR status='pending' ORDER BY ts DESC LIMIT 500`, [], (e, rows) => {
+              const pending = (rows || []).map(r => { let rs = []; try { rs = JSON.parse(r.reasons || "[]"); } catch {} const ip = r.ip || ""; return { id: r.id, name: r.name, region: r.region, specialty: r.specialty, reasons: rs, comment: r.comment, ts: r.ts, ip, ipReports: ipCnt[ip] || 1, distinctReporters: nameCnt[r.name] || 1 }; });
+              db.get(`SELECT COUNT(*) AS c FROM user_recos WHERE status='approved'`, [], (e2, row) => sendJson({ ok: true, pending, approvedCount: row ? row.c : 0 }));
+            });
+          });
         });
       } else if (action === "approve") {
         if (!d.id) return sendJson({ error: "id 필요" }, 400);
