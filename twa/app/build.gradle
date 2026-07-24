@@ -150,8 +150,17 @@ android {
 
         
     }
+    signingConfigs {
+        release {
+            storeFile file("../android.keystore")
+            storePassword 'kjeb2026key'
+            keyAlias 'android'
+            keyPassword 'kjeb2026key'
+        }
+    }
     buildTypes {
         release {
+            signingConfig signingConfigs.release
             minifyEnabled true
         }
     }
