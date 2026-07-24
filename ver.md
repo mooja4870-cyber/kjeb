@@ -94,6 +94,7 @@
 | v1.2.1 | 2026-07-22 18:37:00 | [Play App Signing 지원] Google Play 앱 서명 키 SHA-256 지문(88:1B:CF:18:...)을 assetlinks.json에 추가 반영 및 라이브 배포 완료 | HEAD | Play App Signing 지문 추가 |
 | v1.2.2 | 2026-07-24 11:40:00 | [Play Console versionCode 중복 해결] versionCode 17 및 versionName 1.2.2 적용 후 AAB 재빌드 완료 (twa/app-release-bundle.aab) | HEAD | versionCode 17 및 AAB 재빌드 |
 | v1.2.3 | 2026-07-24 11:44:00 | [Play Console AAB 서명 적용] signingConfigs 설정 추가하여 서명 완료된 AAB 재빌드 및 jarsigner 검증 (twa/app-release-bundle.aab) | HEAD | AAB 서명 및 재빌드 완료 |
+| v1.2.4 | 2026-07-24 15:13:12 | [IARC 라이브 등급 발급 완료 기록] Global Rating ID: 321e3a96-6476-8565-8ed0-3f693b4300f9, Google Play 등급 정상 반영 | HEAD | IARC 발급 완료 기록 |
 
 
 
