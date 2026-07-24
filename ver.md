@@ -92,5 +92,7 @@
 | v0.18.1 | 2026-06-24 20:45:00 | [신뢰성/제보 어뷰징 대응] 관리자가 진위를 판단하지 않고 어뷰징만 거르도록 개선(②+③). 관리자 패널에 승인 체크리스트(실존병원·욕설/광고/도배 아님·병원명 구체성·자가홍보 IP정황) 표시, 각 제보에 독립제보 수(distinctReporters)·동일IP 제보횟수(ipReports, 3건↑ 경고)·IP 노출(admin.js·server.js list 보강). 검색페이지는 제보를 보증이 아닌 ‘이웃 N명 제보·미검증 참고’로 정직 표기(배지·상세·userOnly 카드 문구). 장난 제보가 노출돼도 미검증 표기라 무해. 검증: 관리자 목록 단서필드 정상 | HEAD | 제보 미검증표기+관리자 단서 |
 | v1.2.0 | 2026-07-22 18:20:00 | [Play Console 정책 대응] targetSdkVersion 35 (Android 15) 및 versionCode 16 (v1.2.0) 적용 후 AAB 재빌드 및 서명 완료(twa/app-release-bundle.aab), assetlinks.json 디지털 에셋 링크 서빙 구조 개선 | HEAD | Target API & AssetLinks 대응 |
 | v1.2.1 | 2026-07-22 18:37:00 | [Play App Signing 지원] Google Play 앱 서명 키 SHA-256 지문(88:1B:CF:18:...)을 assetlinks.json에 추가 반영 및 라이브 배포 완료 | HEAD | Play App Signing 지문 추가 |
+| v1.2.2 | 2026-07-24 11:40:00 | [Play Console versionCode 중복 해결] versionCode 17 및 versionName 1.2.2 적용 후 AAB 재빌드 완료 (twa/app-release-bundle.aab) | HEAD | versionCode 17 및 AAB 재빌드 |
+
 
 

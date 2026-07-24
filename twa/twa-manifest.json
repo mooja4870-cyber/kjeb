@@ -20,8 +20,8 @@
     "path": "/Users/l/project/kjeb_cf/twa/android.keystore",
     "alias": "android"
   },
-  "appVersionName": "1.2.0",
-  "appVersionCode": 16,
+  "appVersionName": "1.2.2",
+  "appVersionCode": 17,
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
   "webManifestUrl": "https://kjeb.pages.dev/manifest.json",
@@ -40,5 +40,5 @@
   "additionalTrustedOrigins": [],
   "retainedBundles": [],
   "displayOverride": [],
-  "appVersion": "1.2.0"
+  "appVersion": "1.2.2"
 }

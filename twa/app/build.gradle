@@ -57,8 +57,8 @@ android {
         applicationId "com.kjeb.app"
         minSdkVersion 23
         targetSdkVersion 35
-        versionCode 16
-        versionName "1.2.0"
+        versionCode 17
+        versionName "1.2.2"
 
         // The name for the application
         resValue "string", "appName", twaManifest.name

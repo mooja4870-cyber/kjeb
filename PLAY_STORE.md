@@ -4,7 +4,7 @@
 
 ## 0) 업로드 파일
 - **AAB(필수, APK 아님)**: `twa/app-release-bundle.aab`
-- 패키지명: `com.kjeb.app` · 버전: 1.2.0 (versionCode **16**, targetSdkVersion **35**)
+- 패키지명: `com.kjeb.app` · 버전: 1.2.2 (versionCode **17**, targetSdkVersion **35**)
 - 서명: 우리 keystore(`twa/android.keystore`, alias `android`, pw `kjeb2026key`). 첫 업로드 시 **Play 앱 서명** 사용 → 이 키는 ‘업로드 키’가 됨.
 - ⚠️ 업데이트마다 versionCode를 17, 18…로 올려 재빌드 후 새 AAB 업로드.
 
