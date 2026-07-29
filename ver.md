@@ -95,6 +95,7 @@
 | v1.2.2 | 2026-07-24 11:40:00 | [Play Console versionCode 중복 해결] versionCode 17 및 versionName 1.2.2 적용 후 AAB 재빌드 완료 (twa/app-release-bundle.aab) | HEAD | versionCode 17 및 AAB 재빌드 |
 | v1.2.3 | 2026-07-24 11:44:00 | [Play Console AAB 서명 적용] signingConfigs 설정 추가하여 서명 완료된 AAB 재빌드 및 jarsigner 검증 (twa/app-release-bundle.aab) | HEAD | AAB 서명 및 재빌드 완료 |
 | v1.2.4 | 2026-07-24 15:13:12 | [IARC 라이브 등급 발급 완료 기록] Global Rating ID: 321e3a96-6476-8565-8ed0-3f693b4300f9, Google Play 등급 정상 반영 | HEAD | IARC 발급 완료 기록 |
+| v1.2.5 | 2026-07-29 18:25:00 | [Play 정책 대응] 대상 API 수준 36(Android 16) 적용 — targetSdkVersion 35→36, versionCode 17→18, versionName 1.2.2→1.2.5. 서명 AAB/APK 재빌드 및 jarsigner 검증 완료 | HEAD | 2026-08-31 정책 기한 대응 |
 
 
 
